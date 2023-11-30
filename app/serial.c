@@ -90,9 +90,6 @@ void Serial_InitTask( void )
 
     HAL_FDCAN_ActivateNotification( &CANHandler, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0 );
 
-
-
-
     
 }
 
