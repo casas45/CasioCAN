@@ -28,3 +28,10 @@ void SysTick_Handler( void )
 {
     HAL_IncTick( );
 }
+
+extern FDCAN_HandleTypeDef CANHandler;
+
+void TIM16_FDCAN_IT0_IRQHandler( void )
+{
+    HAL_FDCAN_IRQHandler( &CANHandler );
+}
