@@ -14,7 +14,7 @@ TARGET = temp
 # Files to compile
 SRCS  = main.c ints.c msps.c startup_stm32g0b1xx.s system_stm32g0xx.c 
 SRCS += stm32g0xx_hal.c stm32g0xx_hal_cortex.c stm32g0xx_hal_rcc.c stm32g0xx_hal_flash.c
-SRCS += stm32g0xx_hal_gpio.c app_serial.c queue.c scheduler.c
+SRCS += stm32g0xx_hal_gpio.c serial.c queue.c scheduler.c
 # linker file
 LINKER = linker.ld
 # Global symbols (#defines)

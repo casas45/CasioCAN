@@ -13,7 +13,7 @@
 #include "scheduler.h"
 #include "queue.h"
 #include "bsp.h"
-#include "app_serial.h"
+#include "serial.h"
 
 #define TASKS_N         1u
 #define TICK_VAL        5u
