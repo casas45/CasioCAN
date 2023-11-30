@@ -10,7 +10,19 @@
  *          doxygen runs by typing "make docs", index page is generated in
  *          Build/doxigen/html/index.html
  */
+#include "scheduler.h"
+#include "queue.h"
 #include "bsp.h"
+#include "app_serial.h"
+
+#define TASKS_N         1u
+#define TICK_VAL        5u
+#define PERIOD_SERIAL_TASK  10u
+
+static AppSched_Task tasks[ TASKS_N ];
+static AppSched_Scheduler Scheduler;
+
+
 
 /**
  * @brief   **Application entry point**
@@ -22,23 +34,16 @@
  */
 int main( void )
 {
-    GPIO_InitTypeDef GPIO_InitStruct;
+    /*Scheduler config*/
+    Scheduler.tick      = TICK_VAL;
+    Scheduler.tasks     = TASKS_N;
+    Scheduler.taskPtr   = tasks;
+    AppSched_initScheduler( &Scheduler );
+    /*Register serial task*/
+    AppSched_registerTask( &Scheduler, Serial_InitTask, Serial_PeriodicTask, PERIOD_SERIAL_TASK );
 
-    HAL_Init( );
+    AppSched_startScheduler( &Scheduler );
 
-    __HAL_RCC_GPIOA_CLK_ENABLE( );
-
-    GPIO_InitStruct.Mode  = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull  = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-    GPIO_InitStruct.Pin   = GPIO_PIN_5;
-    HAL_GPIO_Init( GPIOA, &GPIO_InitStruct );
-
-    for( ;; )
-    {
-        HAL_GPIO_TogglePin( GPIOA, GPIO_PIN_5 );
-        HAL_Delay( 1000u );
-    }
 
     return 0u;
 }
