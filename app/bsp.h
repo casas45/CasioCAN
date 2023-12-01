@@ -3,6 +3,8 @@
 
 #include "stm32g0xx.h"
 #include <stdint.h>
+#include "scheduler.h"
+#include "queue.h"
 
 typedef enum
 {

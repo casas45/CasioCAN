@@ -10,8 +10,6 @@
  *          doxygen runs by typing "make docs", index page is generated in
  *          Build/doxigen/html/index.html
  */
-#include "scheduler.h"
-#include "queue.h"
 #include "bsp.h"
 #include "serial.h"
 
