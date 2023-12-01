@@ -1,6 +1,8 @@
 #include "serial.h"
 #include "bsp.h" 
 
+#define BCD_TO_BIN( x ) ( ( ( x >> 4 ) * 10 ) + ( x & 0x0F ) )
+
 #define FILTERS_N       3U
 #define ID_TIME_MSG     0x111U
 #define ID_DATE_MSG     0x127U
