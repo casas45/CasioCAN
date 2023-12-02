@@ -8,17 +8,18 @@
 #define ID_DATE_MSG         0x127u
 #define ID_ALARM_MSG        0x101u
 #define FILTER_MASK         0x7FFu
-#define MESSAGES_N          0x23u   /*35 queue messages*/
+#define MESSAGES_N          0x0Au   /*10 messages can arrive in 10ms*/
 #define VALID_SECONDS_PARAM 0x00
 #define RESPONSE_ID         0x122u
 #define OK_RESPONSE         0x55u
 #define ERROR_RESPONSE      0xAAu
 #define N_BYTES_RESPONSE    0x01u
+#define N_BYTES_CAN_MSG     0x08u
 
 typedef struct _App_CanTypeDef
 {
     uint16_t id;        /*CAN message ID*/
-    uint8_t bytes[8];   /*CAN message*/
+    uint8_t bytes[ N_BYTES_CAN_MSG ];   /*CAN message*/
     uint8_t lenght;     /*CAN messsge lenght*/
 } APP_CanTypeDef;
 
@@ -31,10 +32,11 @@ FDCAN_TxHeaderTypeDef CANTxHeader;
 /*structure to config CAN filters*/
 FDCAN_FilterTypeDef CANFilter;
 
+APP_MsgTypeDef tm_msg;
+
 static AppQue_Queue queue;
 static APP_CanTypeDef messages[ MESSAGES_N ];
 
-static APP_state state = IDLE;
 static APP_CanTypeDef readMsg;
 
 static void Serial_SingleFrameTx( uint8_t *data, uint8_t size )
@@ -150,36 +152,65 @@ static APP_state Evaluate_Msg( void )
     return stateRet;
 }
 
-static uint8_t Evaluate_Time_Parameters( void )
+static APP_state Evaluate_Time_Parameters( void )
 {
+    APP_state stateRet = ERROR_;
+    
     uint8_t hour = BCD_TO_BIN( readMsg.bytes[ 0 ] );        /*time parameter 1*/
     uint8_t minutes = BCD_TO_BIN( readMsg.bytes[ 1 ] );     /*time parameter 2*/
     uint8_t seconds = BCD_TO_BIN( readMsg.bytes[ 2 ] );     /*time parameter 3*/
 
-    return Validate_Time( hour, minutes, seconds );
+    if ( Validate_Time( hour, minutes, seconds ) )
+    {
+        stateRet  = OK;
+        tm_msg.msg = SERIAL_MSG_TIME;
+        
+    }
+
+    return stateRet;
 }
 
-static uint8_t Evaluate_Date_Parameters( void )
+static APP_state Evaluate_Date_Parameters( void )
 {
+    APP_state stateRet = ERROR_;
+
     uint8_t day = BCD_TO_BIN( readMsg.bytes[ 0 ] );             /*date parameter 1*/
     uint8_t month = BCD_TO_BIN( readMsg.bytes[ 1 ] );           /*date parameter 2*/
     uint16_t year = BCD_TO_BIN( readMsg.bytes[ 2 ] ) * 100;     /*param 3 * 100 to get two most significant figures of the year */
     year += BCD_TO_BIN( readMsg.bytes[ 3 ] );                   /*add param 4 */
     
-    return Validate_Date( day, month, year );
+    if( Validate_Date( day, month, year ) )
+    {
+        stateRet = OK;
+        tm_msg.msg        = SERIAL_MSG_DATE;
+        tm_msg.tm.tm_mday = day;
+        tm_msg.tm.tm_mon  = month;
+        tm_msg.tm.tm_year = year;
+        tm_msg.tm.tm_wday = WeekDay( day, month, year );
+    }
+
+    return stateRet;
 }
 
-static uint8_t Evaluate_Alarm_Parameters( void )
+static APP_state Evaluate_Alarm_Parameters( void )
 {
+    APP_state stateRet = ERROR_;
+
     uint8_t hour = BCD_TO_BIN( readMsg.bytes[ 0 ] );        /*Alarm parameter 1*/
     uint8_t minutes = BCD_TO_BIN( readMsg.bytes[ 1 ] );     /*Alarm parameter 2*/
 
-    return Validate_Time( hour, minutes, VALID_SECONDS_PARAM );
+    if ( Validate_Time( hour, minutes, VALID_SECONDS_PARAM ) )
+    {
+        stateRet = OK;
+        tm_msg.msg = SERIAL_MSG_ALARM;
+    }
+
+    return stateRet;
 }
 
 static void Send_Ok_Message( void )
 {
-    uint8_t data[8] = {0};
+    uint8_t data[ N_BYTES_CAN_MSG ] = {0};
     data[ 0 ] = OK_RESPONSE;
 
     Serial_SingleFrameTx( data, N_BYTES_RESPONSE );
@@ -189,7 +220,7 @@ static void Send_Ok_Message( void )
 
 static void Send_Error_Message( void )
 { 
-    uint8_t data[8] = {0};
+    uint8_t data[ N_BYTES_CAN_MSG ] = {0};
     data[ 0 ] = ERROR_RESPONSE;
 
     Serial_SingleFrameTx( data, N_BYTES_RESPONSE );
@@ -200,8 +231,6 @@ static void Send_Error_Message( void )
 
 void Serial_InitTask( void )
 {
-    HAL_Init( );
-
     /*FDCAN Configuration (100kps)*/
     CANHandler.Instance                     = FDCAN1;
     CANHandler.Init.Mode                    = FDCAN_MODE_NORMAL;
@@ -225,13 +254,11 @@ void Serial_InitTask( void )
     CANFilter.FilterID1     = ID_TIME_MSG;
     CANFilter.FilterID2     = FILTER_MASK;
     HAL_FDCAN_ConfigFilter( &CANHandler, &CANFilter );
-
+    /*Config filter to ID DATE and ID ALARM*/
     CANFilter.FilterIndex   = 1;
+    CANFilter.FilterType    = FDCAN_FILTER_DUAL;
     CANFilter.FilterID1     = ID_DATE_MSG;
-    HAL_FDCAN_ConfigFilter ( &CANHandler, &CANFilter );
-
-    CANFilter.FilterIndex   = 2;
-    CANFilter.FilterID1     = ID_ALARM_MSG;
+    CANFilter.FilterID2     = ID_ALARM_MSG;
     HAL_FDCAN_ConfigFilter ( &CANHandler, &CANFilter );
 
     /*FDCAN to normal mode*/
@@ -255,85 +282,81 @@ void Serial_InitTask( void )
 
 void Serial_PeriodicTask( void )
 {
-     switch ( state )
-     {
-        case IDLE:
+    static APP_state state = IDLE;
 
-            if( !HIL_QUEUE_isQueueEmptyISR( &queue ) )
-            {
-                state = MESSAGE;
-            }
+    while ( !HIL_QUEUE_isQueueEmptyISR( &queue ) )
+    {
+        switch ( state )
+        {
+            case IDLE:
+     
+                state = MESSAGE;  
 
-            break;
-        
-        case MESSAGE:
-
-            state = Evaluate_Msg();
-
-            break;
-        
-        case TIME:
-
-            if ( Evaluate_Time_Parameters() )
-            {
-                state = OK;
-            }else{
-                state = ERROR_;
-            }
+                break;
             
-            break;
-        
-        case DATE:
+            case MESSAGE:
 
-            if( Evaluate_Date_Parameters() )
-            {
-                state = OK;
-            }else{
-                state = ERROR_;
-            }
+                state = Evaluate_Msg();
+
+                break;
             
-            break;
-        
-        case ALARM:
+            case TIME:
 
-            if( Evaluate_Alarm_Parameters() )
-            {
-                state = OK;
-            }else{
-                state = ERROR_;
-            }
-
-            break;
-
-        case OK:
+                state = Evaluate_Time_Parameters( );
+                
+                break;
             
-            Send_Ok_Message( );
-            state = IDLE;
+            case DATE:
 
-            break;
-        
-        case ERROR_:
+                state = Evaluate_Date_Parameters( );
+                
+                break;
+            
+            case ALARM:
 
-            Send_Error_Message( );
-            state = IDLE;
+                state = Evaluate_Alarm_Parameters( );
 
-            break;
+                break;
 
-        default:
-            break;
-     }
+            case OK:
+                
+                Send_Ok_Message( );
+                state = IDLE;
 
+                if ( tm_msg.msg == SERIAL_MSG_TIME )
+                {
+                    tm_msg.tm.tm_hour = BCD_TO_BIN( readMsg.bytes[ 0 ] );
+                    tm_msg.tm.tm_min  = BCD_TO_BIN( readMsg.bytes[ 1 ] );
+                    tm_msg.tm.tm_sec  = BCD_TO_BIN( readMsg.bytes[ 2 ] );
+                }
+                
+
+                break;
+            
+            case ERROR_:
+
+                Send_Error_Message( );
+                state = IDLE;
+
+                break;
+
+            default:
+                break;
+        }
+    }
+    
+    
 }
 
 void HAL_FDCAN_RxFifo0Callback( FDCAN_HandleTypeDef *hfdcan, uint32_t TxEventFifoITs )
 {
-    uint8_t data[ 8 ] = {0};
+    uint8_t data[ N_BYTES_CAN_MSG ] = {0};
     APP_CanTypeDef msg;
 
     /*get the msg from fifo0*/
     HAL_FDCAN_GetRxMessage( hfdcan, FDCAN_RX_FIFO0, &CANRxHeader, data );
 
-    memcpy( msg.bytes, data, 8 );
+    memcpy( msg.bytes, data, N_BYTES_CAN_MSG );
     
     /*evaluate if its a valid CAN-TP single frame*/
     if ( Serial_SingleFrameRx( msg.bytes, &msg.lenght ) != 0 )     

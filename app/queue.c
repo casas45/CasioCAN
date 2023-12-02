@@ -180,29 +180,7 @@ unsigned char HIL_QUEUE_writeDataISR( AppQue_Queue *queue, const void *data )
 {   
     __disable_irq( );
 
-    unsigned char varRet = FALSE;
-
-    if ( queue->Full == FALSE)
-    {
-        queue->Empty = FALSE;       //if access to write then the queue will no longer be empty
-
-        /*cppcheck-suppress misra-c2012-11.5 ; 
-        The function receive a void pointer to the buffer
-        if this is changed, the queue can no longer handle any type of data.*/
-        unsigned char *ptrBuffer = (unsigned char*) queue->Buffer;
-
-        (void) memcpy( &ptrBuffer[queue->Head * queue->Size], data, queue->Size );
-        
-        queue->Head++;
-        queue->Head = queue->Head % queue->Elements;
-
-        if ( queue->Head == queue->Tail )
-        {
-            queue->Full = TRUE;
-        }
-        
-        varRet = TRUE;
-    }
+    unsigned char varRet = AppQueue_writeData( queue, data );
     
     __enable_irq( );
     
@@ -228,29 +206,7 @@ unsigned char HIL_QUEUE_readDataISR( AppQue_Queue *queue, void *data )
 {
     __disable_irq( );
 
-    unsigned char varRet = FALSE;
-
-    if ( queue->Empty == FALSE)
-    {
-        queue->Full = FALSE;
-
-        /*cppcheck-suppress misra-c2012-11.5 ; 
-        The function receive a void pointer to the buffer
-        if this is changed, the queue can no longer handle any type of data.*/
-        const unsigned char *ptrBuffer = (unsigned char*) queue->Buffer;
-
-        (void) memcpy( data, &ptrBuffer[queue->Tail * queue->Size], queue->Size );
-
-        queue->Tail++;
-        queue->Tail = queue->Tail % queue->Elements;
-
-        if ( queue->Tail == queue->Head )
-        {
-            queue->Empty = TRUE;
-        }
-
-        varRet = TRUE;
-    }
+    unsigned char varRet = AppQueue_readData( queue, data );
     
     __enable_irq( );
 
@@ -292,9 +248,6 @@ unsigned char HIL_QUEUE_isQueueEmptyISR( const AppQue_Queue *queue )
 void HIL_QUEUE_flushQueueISR( AppQue_Queue *queue )
 {
     __disable_irq( );
-    queue->Head = 0;      //Setting index Tail and Head to zero
-    queue->Tail = 0;
-    queue->Empty = TRUE;  //Empty flag to TRUE and Full flg to FALSE
-    queue->Full = FALSE;
+    AppQueue_flushQueue( queue );
     __enable_irq( );
 }

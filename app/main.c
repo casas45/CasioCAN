@@ -32,6 +32,8 @@ static AppSched_Scheduler Scheduler;
  */
 int main( void )
 {
+    HAL_Init( );
+    
     /*Scheduler config*/
     Scheduler.tick      = TICK_VAL;
     Scheduler.tasks     = TASKS_N;
