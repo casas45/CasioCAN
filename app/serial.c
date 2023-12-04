@@ -1,20 +1,7 @@
 #include "serial.h"
 #include "bsp.h" 
 
-#define BCD_TO_BIN( x ) ( ( ( x >> 4 ) * 10 ) + ( x & 0x0F ) )
-
-#define FILTERS_N           3u
-#define ID_TIME_MSG         0x111u
-#define ID_DATE_MSG         0x127u
-#define ID_ALARM_MSG        0x101u
-#define FILTER_MASK         0x7FFu
-#define MESSAGES_N          0x0Au   /*10 messages can arrive in 10ms*/
-#define VALID_SECONDS_PARAM 0x00
-#define RESPONSE_ID         0x122u
-#define OK_RESPONSE         0x55u
-#define ERROR_RESPONSE      0xAAu
-#define N_BYTES_RESPONSE    0x01u
-#define N_BYTES_CAN_MSG     0x08u
+#define BCD_TO_BIN( x ) ( ( ( (x) >> 4 ) * 10 ) + ( (x) & 0x0F ) )
 
 typedef struct _App_CanTypeDef
 {
@@ -24,213 +11,49 @@ typedef struct _App_CanTypeDef
 } APP_CanTypeDef;
 
 /*structure fort CAN initialization*/
-FDCAN_HandleTypeDef CANHandler;
-/*structure CAN Rx Header*/
-FDCAN_RxHeaderTypeDef CANRxHeader;
+static FDCAN_HandleTypeDef CANHandler;
 /*CAN header structure*/
-FDCAN_TxHeaderTypeDef CANTxHeader;
-/*structure to config CAN filters*/
-FDCAN_FilterTypeDef CANFilter;
+static FDCAN_TxHeaderTypeDef CANTxHeader;
 
-APP_MsgTypeDef tm_msg;
+static APP_MsgTypeDef tm_msg;
 
 static AppQue_Queue queue;
-static APP_CanTypeDef messages[ MESSAGES_N ];
 
 static APP_CanTypeDef readMsg;
 
-static void Serial_SingleFrameTx( uint8_t *data, uint8_t size )
-{
-    if(size > 7)
-    {
-        size = 7;
-    }
+/*Functions prototypes*/
+static void Serial_SingleFrameTx( uint8_t *data, uint8_t size );
 
-    for (uint8_t i = size; i > 0; i--)
-    {
-        *(data + i) = *(data + i -1);
-    }
+static uint8_t Serial_SingleFrameRx( uint8_t *data, uint8_t *size);
 
-    *(data) = size;
-}
+static unsigned char Validate_LeapYear( unsigned short year );
 
-static uint8_t Serial_SingleFrameRx( uint8_t *data, uint8_t *size)
-{
-    uint8_t varRet;
-    *size = data[0] & 0x0F;
+static unsigned char Validate_Date( unsigned char days, unsigned char month, unsigned short year );
 
-    if ( ( (data[0] >> 4) == 0 ) && ( (*size > 0) || (*size < 8) ) )  /*check if its a valid single frame*/
-    {
-        varRet = *size;                         /*if it is, return the size*/
-        for (uint8_t i = 0; i < *size; i++)     /*and remove the first byte of data*/
-        {
-            data[i] = data[i + 1];
-        }
-        
-    }else{
-        varRet = 0;                             /*if it isn't just return 0*/
-    }
-    
-    return varRet;
-}
+static unsigned char WeekDay( unsigned char days, unsigned char month, unsigned short year );
 
-static unsigned char Validate_LeapYear( unsigned short year ){
-    return ( (year % 4u) == 0u ) && ( ( (year % 100u) != 0u ) || ( (year % 400u) == 0u ) );
-}
+static unsigned char Validate_Time (unsigned char hour, unsigned char minutes, unsigned char seconds);
 
-static unsigned char Validate_Date( unsigned char days, unsigned char month, unsigned short year )
-{
-    unsigned char m_days [12u] = {31u, 28u, 31u, 30u, 31u, 30u, 31u, 31u, 30u, 31u, 30u, 31u};
+static APP_state Evaluate_Msg( void );
 
-    unsigned char leapYear = Validate_LeapYear( year );
+static APP_state Evaluate_Time_Parameters( void );
 
-    if ( leapYear == TRUE )  //if its a leap year February has 29 days
-    {
-        m_days[ 1u ] = 29u;
-    }
+static APP_state Evaluate_Date_Parameters( void );
 
-    return ( days > 0u ) && ( days <= m_days[ month - 1u ] ) && ( month > 0u ) && ( month <= 12u ) && ( year >= 1900u ) && ( year <= 2100u );
-}
+static APP_state Evaluate_Alarm_Parameters( void );
 
-static unsigned char WeekDay( unsigned char days, unsigned char month, unsigned short year ){
-    unsigned long part1;
-    unsigned long part2;
-    unsigned long part3;
-    unsigned long part4;
-    unsigned long part5;
+static void Send_Ok_Message( void );
 
-    unsigned long day = (unsigned short) days;
-    unsigned long months = (unsigned short) month;
-    unsigned long years = (unsigned short) year;
-
-    unsigned char result;
-
-    part1 = day + ( ( 153u * ( months + ( 12u * ( ( 14u - months ) / 12u ) ) - 3u ) + 2u ) / 5u );
-
-    part2 = 365u * ( years + 4800u - ( ( 14u - months ) / 12u ) );
-
-    part3 = ( years + 4800u - ( ( 14u - months ) / 12u ) ) / 4u;
-
-    part4 = ( ( years + 4800u - ( ( 14u - months ) / 12u ) ) / 100u );
-
-    part5 = ( ( years + 4800u - ( ( 14u - months) / 12u ) ) / 400u ) - 32044u;
-
-    result = (unsigned char) ( ( part1 + part2 + part3 - part4 + part5 ) % 7u );
-
-    return result;
-}
-
-static unsigned char Validate_Time (unsigned char hour, unsigned char minutes, unsigned char seconds){
-    return ( hour < 24u ) && ( minutes < 60u ) && ( seconds < 60u );
-}
-
-static APP_state Evaluate_Msg( void )
-{
-    APP_state stateRet;
-
-    HIL_QUEUE_readDataISR( &queue, &readMsg);
-    
-    switch( readMsg.id )
-    {
-        case ID_TIME_MSG:
-            stateRet = TIME; 
-            break;
-
-        case ID_DATE_MSG:
-            stateRet = DATE;
-            break;
-        
-        case ID_ALARM_MSG:
-            stateRet = ALARM;
-            break;
-
-        default:
-            stateRet = ERROR_;
-            break;
-    }
-
-    return stateRet;
-}
-
-static APP_state Evaluate_Time_Parameters( void )
-{
-    APP_state stateRet = ERROR_;
-    
-    uint8_t hour = BCD_TO_BIN( readMsg.bytes[ 0 ] );        /*time parameter 1*/
-    uint8_t minutes = BCD_TO_BIN( readMsg.bytes[ 1 ] );     /*time parameter 2*/
-    uint8_t seconds = BCD_TO_BIN( readMsg.bytes[ 2 ] );     /*time parameter 3*/
-
-    if ( Validate_Time( hour, minutes, seconds ) )
-    {
-        stateRet  = OK;
-        tm_msg.msg = SERIAL_MSG_TIME;
-        
-    }
-
-    return stateRet;
-}
-
-static APP_state Evaluate_Date_Parameters( void )
-{
-    APP_state stateRet = ERROR_;
-
-    uint8_t day = BCD_TO_BIN( readMsg.bytes[ 0 ] );             /*date parameter 1*/
-    uint8_t month = BCD_TO_BIN( readMsg.bytes[ 1 ] );           /*date parameter 2*/
-    uint16_t year = BCD_TO_BIN( readMsg.bytes[ 2 ] ) * 100;     /*param 3 * 100 to get two most significant figures of the year */
-    year += BCD_TO_BIN( readMsg.bytes[ 3 ] );                   /*add param 4 */
-    
-    if( Validate_Date( day, month, year ) )
-    {
-        stateRet = OK;
-        tm_msg.msg        = SERIAL_MSG_DATE;
-        tm_msg.tm.tm_mday = day;
-        tm_msg.tm.tm_mon  = month;
-        tm_msg.tm.tm_year = year;
-        tm_msg.tm.tm_wday = WeekDay( day, month, year );
-    }
-
-    return stateRet;
-}
-
-static APP_state Evaluate_Alarm_Parameters( void )
-{
-    APP_state stateRet = ERROR_;
-
-    uint8_t hour = BCD_TO_BIN( readMsg.bytes[ 0 ] );        /*Alarm parameter 1*/
-    uint8_t minutes = BCD_TO_BIN( readMsg.bytes[ 1 ] );     /*Alarm parameter 2*/
-
-    if ( Validate_Time( hour, minutes, VALID_SECONDS_PARAM ) )
-    {
-        stateRet = OK;
-        tm_msg.msg = SERIAL_MSG_ALARM;
-    }
-
-    return stateRet;
-}
-
-static void Send_Ok_Message( void )
-{
-    uint8_t data[ N_BYTES_CAN_MSG ] = {0};
-    data[ 0 ] = OK_RESPONSE;
-
-    Serial_SingleFrameTx( data, N_BYTES_RESPONSE );
-
-    HAL_FDCAN_AddMessageToTxFifoQ( &CANHandler, &CANTxHeader, data );
-}
-
-static void Send_Error_Message( void )
-{ 
-    uint8_t data[ N_BYTES_CAN_MSG ] = {0};
-    data[ 0 ] = ERROR_RESPONSE;
-
-    Serial_SingleFrameTx( data, N_BYTES_RESPONSE );
-
-    HAL_FDCAN_AddMessageToTxFifoQ( &CANHandler, &CANTxHeader, data );
-}
+static void Send_Error_Message( void );
 
 
 void Serial_InitTask( void )
 {
+    /*structure to config CAN filters*/
+    FDCAN_FilterTypeDef CANFilter;
+    
+    static APP_CanTypeDef messages[ MESSAGES_N ];   /*queue buffer*/
+
     /*FDCAN Configuration (100kps)*/
     CANHandler.Instance                     = FDCAN1;
     CANHandler.Init.Mode                    = FDCAN_MODE_NORMAL;
@@ -284,7 +107,7 @@ void Serial_PeriodicTask( void )
 {
     static APP_state state = IDLE;
 
-    while ( !HIL_QUEUE_isQueueEmptyISR( &queue ) )
+    while ( ( HIL_QUEUE_isQueueEmptyISR( &queue ) == FALSE ) || ( state != IDLE ) )
     {
         switch ( state )
         {
@@ -321,15 +144,7 @@ void Serial_PeriodicTask( void )
             case OK:
                 
                 Send_Ok_Message( );
-                state = IDLE;
-
-                if ( tm_msg.msg == SERIAL_MSG_TIME )
-                {
-                    tm_msg.tm.tm_hour = BCD_TO_BIN( readMsg.bytes[ 0 ] );
-                    tm_msg.tm.tm_min  = BCD_TO_BIN( readMsg.bytes[ 1 ] );
-                    tm_msg.tm.tm_sec  = BCD_TO_BIN( readMsg.bytes[ 2 ] );
-                }
-                
+                state = IDLE;                
 
                 break;
             
@@ -348,21 +163,219 @@ void Serial_PeriodicTask( void )
     
 }
 
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is in HAL library*/
 void HAL_FDCAN_RxFifo0Callback( FDCAN_HandleTypeDef *hfdcan, uint32_t TxEventFifoITs )
 {
-    uint8_t data[ N_BYTES_CAN_MSG ] = {0};
-    APP_CanTypeDef msg;
-
-    /*get the msg from fifo0*/
-    HAL_FDCAN_GetRxMessage( hfdcan, FDCAN_RX_FIFO0, &CANRxHeader, data );
-
-    memcpy( msg.bytes, data, N_BYTES_CAN_MSG );
-    
-    /*evaluate if its a valid CAN-TP single frame*/
-    if ( Serial_SingleFrameRx( msg.bytes, &msg.lenght ) != 0 )     
+    if ( TxEventFifoITs == FDCAN_IT_RX_FIFO0_NEW_MESSAGE )
     {
-        msg.id = CANRxHeader.Identifier;            /*get the msg ID*/
-        HIL_QUEUE_writeDataISR( &queue, &msg );     /*add the msg to queue*/
+        uint8_t data[ N_BYTES_CAN_MSG ] = {0};
+        APP_CanTypeDef msg;
+        /*structure CAN Rx Header*/
+        FDCAN_RxHeaderTypeDef CANRxHeader;
+
+        /*get the msg from fifo0*/
+        HAL_FDCAN_GetRxMessage( hfdcan, FDCAN_RX_FIFO0, &CANRxHeader, data );
+
+        (void) memcpy( msg.bytes, data, N_BYTES_CAN_MSG );
+    
+        /*evaluate if its a valid CAN-TP single frame*/
+        if ( Serial_SingleFrameRx( msg.bytes, &msg.lenght ) != FALSE )     
+        {
+            msg.id = CANRxHeader.Identifier;            /*get the msg ID*/
+            (void) HIL_QUEUE_writeDataISR( &queue, &msg );     /*add the msg to queue*/
+        }
+    }
+}
+
+static void Serial_SingleFrameTx( uint8_t *data, uint8_t size )
+{
+    uint8_t size_aux = size;
+
+    if(size > 7u)
+    {
+        size_aux = 7u;
     }
 
+    for ( uint8_t i = size_aux; i > 0u; i--)
+    {
+        data[ i ] = data[ i - 1u ];
+    }
+
+    data[ 0 ] = size;
+}
+
+static uint8_t Serial_SingleFrameRx( uint8_t *data, uint8_t *size)
+{
+    uint8_t varRet;
+    *size = data[0] & LS_NIBBLE_MASK;
+
+    if ( ( (data[0] >> 4u) == 0u ) && ( (*size > 0u) && (*size < N_BYTES_CAN_MSG) ) )  /*check if its a valid single frame*/
+    {
+        varRet = *size;                         /*if it is, return the size*/
+        for (uint8_t i = 0u; i < *size; i++)     /*and remove the first byte of data*/
+        {
+            data[ i ] = data[ i + 1u ];
+        }
+        
+    }else{
+        varRet = FALSE;                             /*if it isn't just return 0*/
+    }
+    
+    return varRet;
+}
+
+static unsigned char Validate_LeapYear( unsigned short year ){
+    return ( (year % 400u) == 0u ) || ( ( (year % 4u) == 0u ) && ( (year % 100u) != 0u ) );
+}
+
+static unsigned char Validate_Date( unsigned char days, unsigned char month, unsigned short year )
+{
+    unsigned char m_days [ MONTHS ] = {MONTH_31_D, FEB_28, MONTH_31_D, MONTH_30_D, MONTH_31_D, MONTH_30_D, MONTH_31_D, MONTH_31_D, MONTH_30_D, MONTH_31_D, MONTH_30_D, MONTH_31_D};
+
+    unsigned char leapYear = Validate_LeapYear( year );
+
+    if ( leapYear == TRUE )  //if its a leap year February has 29 days
+    {
+        m_days[ FEB ] = FEB_29;
+    }
+
+    return ( days > 0u ) && ( days <= m_days[ month - 1u ] ) && ( month > 0u ) && ( month <= MONTHS ) && ( year >= YEAR_MIN ) && ( year <= YEAR_MAX );
+}
+
+static unsigned char WeekDay( unsigned char days, unsigned char month, unsigned short year ){
+    unsigned long part1;
+    unsigned long part2;
+    unsigned long part3;
+    unsigned long part4;
+    unsigned long part5;
+
+    unsigned long day = (unsigned short) days;
+    unsigned long months = (unsigned short) month;
+    unsigned long years = (unsigned short) year;
+
+    unsigned char result;
+
+    part1 = day + ( ( 153u * ( months + ( 12u * ( ( 14u - months ) / 12u ) ) - 3u ) + 2u ) / 5u );
+
+    part2 = 365u * ( years + 4800u - ( ( 14u - months ) / 12u ) );
+
+    part3 = ( years + 4800u - ( ( 14u - months ) / 12u ) ) / 4u;
+
+    part4 = ( ( years + 4800u - ( ( 14u - months ) / 12u ) ) / 100u );
+
+    part5 = ( ( years + 4800u - ( ( 14u - months) / 12u ) ) / 400u ) - 32044u;
+
+    result = (unsigned char) ( ( part1 + part2 + part3 - part4 + part5 ) % 7u );
+
+    return result;
+}
+
+static unsigned char Validate_Time (unsigned char hour, unsigned char minutes, unsigned char seconds){
+    return ( hour < 24u ) && ( minutes < 60u ) && ( seconds < 60u );
+}
+
+static APP_state Evaluate_Msg( void )
+{
+    APP_state stateRet;
+
+    (void) HIL_QUEUE_readDataISR( &queue, &readMsg);
+    
+    switch( readMsg.id )
+    {
+        case ID_TIME_MSG:
+            stateRet = TIME; 
+            break;
+
+        case ID_DATE_MSG:
+            stateRet = DATE;
+            break;
+        
+        case ID_ALARM_MSG:
+            stateRet = ALARM;
+            break;
+
+        default:
+            stateRet = ERROR_;
+            break;
+    }
+
+    return stateRet;
+}
+
+static APP_state Evaluate_Time_Parameters( void )
+{
+    APP_state stateRet = ERROR_;
+    
+    uint8_t hour    = BCD_TO_BIN( readMsg.bytes[ PARAMETER_1 ] );     /*time parameter 1*/
+    uint8_t minutes = BCD_TO_BIN( readMsg.bytes[ PARAMETER_2 ] );     /*time parameter 2*/
+    uint8_t seconds = BCD_TO_BIN( readMsg.bytes[ PARAMETER_3 ] );     /*time parameter 3*/
+
+    if ( Validate_Time( hour, minutes, seconds ) == TRUE )
+    {
+        stateRet          = OK;
+        tm_msg.msg        = SERIAL_MSG_TIME;
+        tm_msg.tm.tm_hour = hour;
+        tm_msg.tm.tm_min  = minutes;
+        tm_msg.tm.tm_sec  = seconds;
+    }
+
+    return stateRet;
+}
+
+static APP_state Evaluate_Date_Parameters( void )
+{
+    APP_state stateRet = ERROR_;
+
+    uint8_t day   = BCD_TO_BIN( readMsg.bytes[ PARAMETER_1 ] );           /*date parameter 1*/
+    uint8_t month = BCD_TO_BIN( readMsg.bytes[ PARAMETER_2 ] );           /*date parameter 2*/
+    uint16_t year = BCD_TO_BIN( readMsg.bytes[ PARAMETER_3 ] ) * 100;     /*param 3 * 100 to get two most significant figures of the year */
+    year += BCD_TO_BIN( readMsg.bytes[ PARAMETER_4 ] );                   /*add param 4 */
+    
+    if( Validate_Date( day, month, year ) == TRUE )
+    {
+        stateRet = OK;
+        tm_msg.msg        = SERIAL_MSG_DATE;
+        tm_msg.tm.tm_mday = day;
+        tm_msg.tm.tm_mon  = month;
+        tm_msg.tm.tm_year = year;
+        tm_msg.tm.tm_wday = WeekDay( day, month, year );
+    }
+
+    return stateRet;
+}
+
+static APP_state Evaluate_Alarm_Parameters( void )
+{
+    APP_state stateRet = ERROR_;
+
+    uint8_t hour    = BCD_TO_BIN( readMsg.bytes[ PARAMETER_1 ] );     /*Alarm parameter 1*/
+    uint8_t minutes = BCD_TO_BIN( readMsg.bytes[ PARAMETER_2 ] );     /*Alarm parameter 2*/
+
+    if ( Validate_Time( hour, minutes, VALID_SECONDS_PARAM ) == TRUE )
+    {
+        stateRet = OK;
+        tm_msg.msg = SERIAL_MSG_ALARM;
+    }
+
+    return stateRet;
+}
+
+static void Send_Ok_Message( void )
+{
+    uint8_t data[ N_BYTES_CAN_MSG ] = {0};
+    data[ PARAMETER_1 ] = OK_RESPONSE;
+
+    Serial_SingleFrameTx( data, N_BYTES_RESPONSE );
+
+    HAL_FDCAN_AddMessageToTxFifoQ( &CANHandler, &CANTxHeader, data );
+}
+
+static void Send_Error_Message( void )
+{ 
+    uint8_t data[ N_BYTES_CAN_MSG ] = {0};
+    data[ PARAMETER_1 ] = ERROR_RESPONSE;
+
+    Serial_SingleFrameTx( data, N_BYTES_RESPONSE );
+
+    HAL_FDCAN_AddMessageToTxFifoQ( &CANHandler, &CANTxHeader, data );
 }

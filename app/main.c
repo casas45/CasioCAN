@@ -17,11 +17,6 @@
 #define TICK_VAL        5u
 #define PERIOD_SERIAL_TASK  10u
 
-static AppSched_Task tasks[ TASKS_N ];
-static AppSched_Scheduler Scheduler;
-
-
-
 /**
  * @brief   **Application entry point**
  *
@@ -33,6 +28,9 @@ static AppSched_Scheduler Scheduler;
 int main( void )
 {
     HAL_Init( );
+
+    static AppSched_Task tasks[ TASKS_N ];
+    static AppSched_Scheduler Scheduler;
     
     /*Scheduler config*/
     Scheduler.tick      = TICK_VAL;
@@ -40,7 +38,7 @@ int main( void )
     Scheduler.taskPtr   = tasks;
     AppSched_initScheduler( &Scheduler );
     /*Register serial task*/
-    AppSched_registerTask( &Scheduler, Serial_InitTask, Serial_PeriodicTask, PERIOD_SERIAL_TASK );
+    (void) AppSched_registerTask( &Scheduler, Serial_InitTask, Serial_PeriodicTask, PERIOD_SERIAL_TASK );
 
     AppSched_startScheduler( &Scheduler );
 

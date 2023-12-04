@@ -88,7 +88,6 @@ all : build $(TARGET)
 $(TARGET) : $(addprefix Build/, $(TARGET).elf)
 	$(TOOLCHAIN)-objcopy -Oihex $< Build/$(TARGET).hex
 	$(TOOLCHAIN)-objdump -S $< > Build/$(TARGET).lst
-	$(TOOLCHAIN)-size --format=berkeley $<
 
 Build/$(TARGET).elf : $(OBJS)
 	$(TOOLCHAIN)-gcc $(LFLAGS) -T $(LINKER) -o $@ $^
@@ -111,7 +110,7 @@ build :
 clean :
 	rm -rf Build
 
-#---flash the image into the mcu-------------------------------------------------------------------
+	$(TOOLCHAIN)-size --format=berkeley $<
 flash :
 	openocd -f board/st_nucleo_g0.cfg -c "program Build/$(TARGET).hex verify reset" -c shutdown
 
@@ -124,6 +123,7 @@ open :
 debug :
 	arm-none-eabi-gdb Build/$(TARGET).elf -iex "set auto-load safe-path /"
 
+#---flash the image into the mcu-------------------------------------------------------------------
 #---Genrete project documentation with doxygen-----------------------------------------------------
 docs : build
 	mkdir -p Build/doxygen
@@ -133,7 +133,7 @@ docs : build
 #---Run Static analysis plus MISRA-----------------------------------------------------------------
 lint : build
 	mkdir -p Build/lint
-	cppcheck --addon=misra.json --suppressions-list=.msupress $(LNFLAGS) app
+	cppcheck --addon-python=python --addon=misra.json --suppressions-list=.msupress $(LNFLAGS) app
 
 #---Run unit testing with code coverage using ceedling---------------------------------------------
 test : build

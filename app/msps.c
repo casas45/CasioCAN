@@ -7,7 +7,8 @@ void HAL_MspInit( void )
 }
 
 
-/*This function is called in HAL_FDCAN_Init*/
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
+/* cppcheck-suppress misra-c2012-2.7 ; its declared at HAL library*/
 void HAL_FDCAN_MspInit(FDCAN_HandleTypeDef *hfdcan)
 {
     GPIO_InitTypeDef GpioCanStruct;

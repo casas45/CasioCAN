@@ -29,7 +29,6 @@
     - STM32G0B1xx     # HAL library microcontroller in use
     - USE_HAL_DRIVER  # HAL library to active HAL driver func tions
 
-
 # Plugins to add extra fcuntionality to ceedling, like code coverage and pretty reports
 :plugins: 
   :load_paths:
@@ -52,7 +51,9 @@
     - app/main.c              # Ignore main file (renmove from here ig needed)
     - app/ints.c              # Do not test interrupt vectors
     - app/msps.c              # Do not test extra initlization functions
-
+    - Build/**
+  :gcovr:
+    :report_include: app/*
 
 # Configure the mock generator
 :cmock:
