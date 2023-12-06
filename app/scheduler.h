@@ -1,35 +1,63 @@
+/**
+ * @file scheduler.h
+ * 
+ * @brief Here is defined the Timer, Task and Scheduler structs, and the functions prototypes of
+ * the scheduler.c file 
+*/
 #ifndef SCHEDULER_H_
 #define SCHEDULER_H_
+
+#ifndef TEST_L
+#define FOREVER()1
+#else
+extern unsigned char numLoops;
+#define FOREVER() numLoops--
+#endif
 
 #define TRUE    1u
 #define FALSE   0u
 
+/**
+ * @struct AppSched_Task
+ * 
+ * This struct is the task control block (TCB).
+*/
 typedef struct _task
 {
-    unsigned long period;       //How often the task should run in ms
-    unsigned long elapsed;      //the current elapsed time
-    void (*initFunc)(void);     //pointer to init task function
-    void (*taskFunc)(void);     //pointer to task function
-    unsigned char runTask;      //indicate the task is stoped or not
+    unsigned long period;       /*!< How often the task should run in ms */
+    unsigned long elapsed;      /*!< the current elapsed time */
+    void (*initFunc)(void);     /*!< pointer to init task function */
+    void (*taskFunc)(void);     /*!< pointer to task function */
+    unsigned char runTask;      /*!< indicate the task is stopped or not*/
 }AppSched_Task;
 
+/**
+ * @struct AppSched_Timer
+ * 
+ * Struct to control the software timers.
+*/
 typedef struct _AppSched_Timer
 {
-    unsigned long timeout;       /*!< timer timeout to decrement and reload when the timer is re-started */
-    unsigned long count;         /*!< actual timer decrement count */
-    unsigned char startFlag;     /*!< flag to start timer count */
-    void(*callbackPtr)(void);  /*!< pointer to callback function function */
+    unsigned long timeout;       /*!< Timer timeout to decrement and reload when the timer is re-started. */
+    unsigned long count;         /*!< Actual timer decrement count. */
+    unsigned char startFlag;     /*!< Flag to start timer count. */
+    void(*callbackPtr)(void);    /*!< Pointer to callback function function. */
 } AppSched_Timer;
 
+/**
+ * @struct AppSched_Scheduler
+ * 
+ * Struct to control the scheduler.
+*/
 typedef struct _scheduler
 {
-    unsigned char tasks;        //number of task to handle
-    unsigned long tick;         //the time base in ms
-    unsigned char tasksCount;   //internal task counter
-    AppSched_Task *taskPtr;     //Pointer to buffer for the TCB tasks
-    unsigned char timers;        /*number of software timer to use*/
-    AppSched_Timer *timerPtr;       /*Pointer to buffer timer array*/
-    unsigned char timersCount;
+    unsigned char tasks;        /*!< Number of task to handle. */ 
+    unsigned long tick;         /*!< The time base in ms. */
+    unsigned char tasksCount;   /*!< Internal task counter. */ 
+    AppSched_Task *taskPtr;     /*!< Pointer to buffer for the TCB tasks */
+    unsigned char timers;       /*!< Number of software timer to use */ 
+    AppSched_Timer *timerPtr;   /*!< Pointer to buffer timer array */    
+    unsigned char timersCount;  /*!< Internal timer counter. */
 }AppSched_Scheduler;
 
 

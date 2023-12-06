@@ -167,7 +167,7 @@ unsigned char AppSched_periodTask( AppSched_Scheduler *scheduler, unsigned char 
 
 void AppSched_startScheduler( AppSched_Scheduler *scheduler )
 {
-    unsigned char status = TRUE;
+    //unsigned char status = TRUE;
 
     unsigned long tickstart = HAL_GetTick(); 
     static unsigned long countTicks = 0;  //variable to count ticks
@@ -180,7 +180,7 @@ void AppSched_startScheduler( AppSched_Scheduler *scheduler )
         }
     }
     
-    while ( status == TRUE )
+    while ( FOREVER() )
     {
 
         if( ( HAL_GetTick() - tickstart ) >= ( scheduler->tick * countTicks ) )    //if to know tick happens

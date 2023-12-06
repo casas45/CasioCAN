@@ -32,5 +32,12 @@ typedef struct _APP_MsgTypeDef
     APP_TmTypeDef tm;   /*time and date structure*/
 } APP_MsgTypeDef;
 
+typedef struct _App_CanTypeDef
+{
+    uint16_t id;        /*CAN message ID*/
+    uint8_t bytes[ 8u ];   /*CAN message*/
+    uint8_t lenght;     /*CAN messsge lenght*/
+} APP_CanTypeDef;
+
 
 #endif

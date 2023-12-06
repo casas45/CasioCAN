@@ -26,6 +26,7 @@
 :defines:
   :test:
     - UTEST           # define the macro UTEST to remove the static qualifier
+    - TEST_L            # macro TEST to test function startScheduler with a "infinite loop"
     - STM32G0B1xx     # HAL library microcontroller in use
     - USE_HAL_DRIVER  # HAL library to active HAL driver func tions
 
@@ -66,6 +67,7 @@
   :strippables:              # Add here all fucntions you do not want to be mocked
     - '(?:HAL_GPIO_EXTI_Rising_Callback\s*\(+.*?\)+)'     # For instance the callback functions
     - '(?:HAL_GPIO_EXTI_Falling_Callback\s*\(+.*?\)+)'    # For instance the callback functions
+    - '(?:HAL_FDCAN_RxFifo0Callback\s*\(+.*?\)+)'    # For instance the callback functions
   :plugins:
     - :ignore                 # Generate <function>_Ignore and <function>_IgnoreAndReturn
     - :ignore_arg             # Generate <function>_IgnoreArg_<param_name>

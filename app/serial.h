@@ -1,6 +1,12 @@
 #ifndef SERIAL_H__
 #define SERIAL_H__
 
+#ifndef UTEST
+#define STATIC static
+#else
+#define STATIC
+#endif
+
 #define FILTERS_N           3u
 #define ID_TIME_MSG         0x111u
 #define ID_DATE_MSG         0x127u
