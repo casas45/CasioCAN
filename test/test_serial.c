@@ -35,7 +35,7 @@ extern FDCAN_HandleTypeDef CANHandler;
 extern FDCAN_TxHeaderTypeDef CANTxHeader;
 
 extern AppQue_Queue queue;
-extern APP_CanTypeDef messages[];
+APP_CanTypeDef messages2[8];
 
 AppQue_Queue queueAux;
 APP_CanTypeDef msgWrite;
@@ -50,7 +50,7 @@ void setUp( void )
     const uint8_t dataAlarm[BYTES_CAN_MESSAGE] = {VALID_BCD_HOUR, VALID_BCD_MIN, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
     const uint8_t dataTime_noValid[BYTES_CAN_MESSAGE] = {NO_VALID_BCD_HOUR, VALID_BCD_MIN, VALID_BCD_SEC, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
     /*Modifying serial file queue*/
-    queue.Buffer    = messages;
+    queue.Buffer    = messages2;
     queue.Elements  = 8;
     queue.Size      = sizeof( APP_CanTypeDef );
     AppQueue_initQueue( &queue );
@@ -371,9 +371,24 @@ void test__Send_Error_Message( void )
     Send_Error_Message();
 }
 
-void test__HAL_FDCAN_RxFifo0Callback__receive_CAN_TP_msg( void )
+void test__HAL_FDCAN_RxFifo0Callback__receive_single_frame_CAN_TP_msg( void )
 {
-    HAL_FDCAN_GetRxMessage_IgnoreAndReturn( HAL_OK );
+    /*0xFF is a don't care value*/
+    uint8_t msg_CanTP[ BYTES_CAN_MESSAGE ] = {SINGLE_FRAME_7_PAYLOAD, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    
+    HAL_FDCAN_GetRxMessage_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_FDCAN_GetRxMessage_ReturnThruPtr_pRxData( msg_CanTP );
+
+    HAL_FDCAN_RxFifo0Callback( &CANHandler, FDCAN_IT_RX_FIFO0_NEW_MESSAGE );
+}
+
+void test__HAL_FDCAN_RxFifo0Callback__receive_first_frame_CAN_TP_msg( void )
+{
+    /*0xFF is a don't care value*/
+    uint8_t msg_CanTP[ BYTES_CAN_MESSAGE ] = {FIRST_FRAME_CAN_TP, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    
+    HAL_FDCAN_GetRxMessage_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_FDCAN_GetRxMessage_ReturnThruPtr_pRxData( msg_CanTP );
 
     HAL_FDCAN_RxFifo0Callback( &CANHandler, FDCAN_IT_RX_FIFO0_NEW_MESSAGE );
 }

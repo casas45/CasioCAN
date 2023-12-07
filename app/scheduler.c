@@ -180,7 +180,7 @@ void AppSched_startScheduler( AppSched_Scheduler *scheduler )
         }
     }
     
-    while ( FOREVER() )
+    while ( FOREVER() > 0 )
     {
 
         if( ( HAL_GetTick() - tickstart ) >= ( scheduler->tick * countTicks ) )    //if to know tick happens
