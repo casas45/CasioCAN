@@ -36,7 +36,7 @@
 #define FEB                 0x01u       /*!< Position of february in an array*/
 #define YEAR_MAX            0x833u      /*!< Max value of a year allowed by the app*/
 #define YEAR_MIN            0x76Du      /*!< Min value of a year allowed by the app*/
-//#define MS_NIBBLE_MASK      0xF0u       /*!< Mask to obtain most significant nibble of a byte*/
+#define MS_NIBBLE_MASK      0xF0u       /*!< Mask to obtain most significant nibble of a byte*/
 #define LS_NIBBLE_MASK      0x0Fu       /*!< Mask to obtain low significant nibble of a byte*/
 
 /**
