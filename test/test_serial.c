@@ -1,9 +1,9 @@
 #include "unity.h"
 #include "serial.h"
 #include "bsp.h"
-#include "queue.h"
 #include <stdint.h>
 
+#include "mock_queue.h"
 #include "mock_stm32g0xx_hal_fdcan.h"
 
 #define BYTES_CAN_MESSAGE       0x08u
@@ -35,62 +35,16 @@ extern FDCAN_HandleTypeDef CANHandler;
 extern FDCAN_TxHeaderTypeDef CANTxHeader;
 
 extern AppQue_Queue queue;
-APP_CanTypeDef messages2[8];
 
-AppQue_Queue queueAux;
-APP_CanTypeDef msgWrite;
-APP_CanTypeDef messagesW[ 4 ];
-
+uint8_t dataTime[BYTES_CAN_MESSAGE] = {VALID_BCD_HOUR, VALID_BCD_MIN, VALID_BCD_SEC, 0xFF, SERIAL_MSG_TIME, 0xFF, 0xFF, 0xFF};
 
 void setUp( void )
 {
     /*OxFF are don't care values*/
-    const uint8_t dataTime[BYTES_CAN_MESSAGE] = {VALID_BCD_HOUR, VALID_BCD_MIN, VALID_BCD_SEC, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    const uint8_t dataDate[BYTES_CAN_MESSAGE] = {VALID_BCD_DAY, VALID_BCD_MONTH, VALID_BCD_YEAR_MS, VALID_BCD_YEAR_LS, 0xFF, 0xFF, 0xFF, 0xFF};
-    const uint8_t dataAlarm[BYTES_CAN_MESSAGE] = {VALID_BCD_HOUR, VALID_BCD_MIN, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    const uint8_t dataTime_noValid[BYTES_CAN_MESSAGE] = {NO_VALID_BCD_HOUR, VALID_BCD_MIN, VALID_BCD_SEC, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    /*Modifying serial file queue*/
-    queue.Buffer    = messages2;
-    queue.Elements  = 8;
-    queue.Size      = sizeof( APP_CanTypeDef );
-    AppQueue_initQueue( &queue );
-    /*Write valid time msg in queue*/
-    msgWrite.id = ID_TIME_MSG;
-    memcpy( msgWrite.bytes, dataTime , BYTES_CAN_MESSAGE);
-    AppQueue_writeData( &queue, &msgWrite );
-
-    /*Write valid date msg in queue*/
-    msgWrite.id = ID_DATE_MSG;
-    memcpy( msgWrite.bytes, dataDate , BYTES_CAN_MESSAGE);
-    AppQueue_writeData( &queue, &msgWrite );
-
-    /*Write valid alarm msg in queue*/
-    msgWrite.id = ID_ALARM_MSG;
-    memcpy( msgWrite.bytes, dataAlarm , BYTES_CAN_MESSAGE);
-    AppQueue_writeData( &queue, &msgWrite );
-
-    /*Write no valid time msg in queue*/
-    msgWrite.id = ID_TIME_MSG;
-    memcpy( msgWrite.bytes, dataTime_noValid , BYTES_CAN_MESSAGE);
-    AppQueue_writeData( &queue, &msgWrite );
-
-    /*Queue aux to Evaluate_Msg function configuration*/
-    queueAux.Buffer    = messagesW;
-    queueAux.Elements  = 4;
-    queueAux.Size      = sizeof( APP_CanTypeDef );
-    AppQueue_initQueue( &queueAux );
-
-    msgWrite.id = ID_TIME_MSG;
-    AppQueue_writeData( &queueAux, &msgWrite );
-
-    msgWrite.id = ID_DATE_MSG;
-    AppQueue_writeData( &queueAux, &msgWrite );
-
-    msgWrite.id = ID_ALARM_MSG;
-    AppQueue_writeData( &queueAux, &msgWrite );
-
-    msgWrite.id = UNKNOW_ID;
-    AppQueue_writeData( &queueAux, &msgWrite );
+    
+    // const uint8_t dataDate[BYTES_CAN_MESSAGE] = {VALID_BCD_DAY, VALID_BCD_MONTH, VALID_BCD_YEAR_MS, VALID_BCD_YEAR_LS, 0xFF, 0xFF, 0xFF, 0xFF};
+    // const uint8_t dataAlarm[BYTES_CAN_MESSAGE] = {VALID_BCD_HOUR, VALID_BCD_MIN, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    // const uint8_t dataTime_noValid[BYTES_CAN_MESSAGE] = {NO_VALID_BCD_HOUR, VALID_BCD_MIN, VALID_BCD_SEC, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 }
 
@@ -106,13 +60,25 @@ void test__Serial_InitTask__init_FDCAN_module( void )
     HAL_FDCAN_ConfigFilter_IgnoreAndReturn( HAL_OK );
     HAL_FDCAN_Start_ExpectAndReturn( &CANHandler, HAL_OK );
     HAL_FDCAN_ActivateNotification_ExpectAndReturn( &CANHandler, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0, HAL_OK );
+    AppQueue_initQueue_Expect( &queue );
 
     Serial_InitTask( );
 }
 
 void test__Serial_PeriodicTask__queue_with_time_msg( void )
 {
-    HAL_FDCAN_AddMessageToTxFifoQ_IgnoreAndReturn( HAL_OK );
+    APP_CanTypeDef SerialMsg;
+    dataTime[MSG] = SERIAL_MSG_TIME;
+    memcpy( SerialMsg.bytes, &dataTime, BYTES_CAN_MESSAGE );
+
+    HIL_QUEUE_isQueueEmptyISR_ExpectAndReturn( &queue, FALSE );
+
+    HIL_QUEUE_readDataISR_ExpectAnyArgsAndReturn( TRUE );
+    HIL_QUEUE_readDataISR_ReturnMemThruPtr_data( &SerialMsg, sizeof( APP_CanTypeDef ) );
+
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
+
+    HIL_QUEUE_isQueueEmptyISR_ExpectAndReturn( &queue, TRUE );
 
     Serial_PeriodicTask( );
 }
@@ -185,7 +151,6 @@ void test__Serial_SingleFrameRx__unpack_msg_valid_CAN_TP_single_frame_wPayload_z
     TEST_ASSERT_FALSE( varRet );
 }
 
-
 void test__Serial_SingleFrameRx__unpack_msg_valid_CAN_TP_single_frame_wPayload_eight_return_FALSE( void )
 {
     uint8_t data_received[BYTES_CAN_MESSAGE] = {0x08, 'H', 'I', 'W', 'O', 'R', 'L', 'D'};
@@ -198,186 +163,201 @@ void test__Serial_SingleFrameRx__unpack_msg_valid_CAN_TP_single_frame_wPayload_e
 }
 
 
-STATIC APP_state Evaluate_Msg( AppQue_Queue *hqueue );
+STATIC void Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr );
 
-void test__Evaluate_Msg__msg_TimeID_return_TIME_state( void )
-{
-    APP_state stateRet;
-
-    stateRet = Evaluate_Msg( &queueAux );
-
-    TEST_ASSERT_EQUAL( stateRet, TIME );
-}
-
-void test__Evaluate_Msg__msg_DateID_return_DATE_state( void )
-{
-APP_state stateRet;
-
-Evaluate_Msg( &queueAux );
-
-stateRet = Evaluate_Msg( &queueAux );
-
-TEST_ASSERT_EQUAL( stateRet, DATE );
-}
-
-void test__Evaluate_Msg__msg_AlarmID_return_ALARM_state( void )
-{
-APP_state stateRet;
-
-for (uint8_t i = 0; i < 2; i++)
-{
-   Evaluate_Msg( &queueAux );
-}
-
-stateRet = Evaluate_Msg( &queueAux );
-
-TEST_ASSERT_EQUAL( stateRet, ALARM );
-}
-
-void test__Evaluate_Msg__msg_UnknownID_return_ERROR_state( void )
-{
-APP_state stateRet;
-
-for (uint8_t i = 0; i < 3; i++)
-{
-   Evaluate_Msg( &queueAux );
-}
-
-stateRet = Evaluate_Msg( &queueAux );
-
-TEST_ASSERT_EQUAL( stateRet, ERROR_ );
-}
-
-STATIC APP_state Evaluate_Time_Parameters( APP_CanTypeDef *msg );
-
-void test__Evaluate_Time_Parameters__valid_time_return_OK_state( void )
+void test__Evaluate_Time_Parameters__valid_time_OK_MSG( void )
 {
     APP_CanTypeDef msgRead;
-    APP_state stateRet;
 
     msgRead.bytes[ PARAMETER_1 ] = VALID_BCD_HOUR;
     msgRead.bytes[ PARAMETER_2 ] = VALID_BCD_MIN;
     msgRead.bytes[ PARAMETER_3 ] = VALID_BCD_SEC;
 
-    stateRet = Evaluate_Time_Parameters( &msgRead );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    TEST_ASSERT_EQUAL( stateRet, OK );
+    Evaluate_Time_Parameters( &msgRead );
+
+    TEST_ASSERT_EQUAL( msgRead.bytes[ MSG ], SERIAL_MSG_OK );
 }
 
-void test__Evaluate_Time_Parameters__no_valid_hour_return_ERROR_state( void )
+void test__Evaluate_Time_Parameters__no_valid_hour_ERROR_MSG( void )
 {
     APP_CanTypeDef msgRead;
-    APP_state stateRet;
 
     msgRead.bytes[ PARAMETER_1 ] = NO_VALID_BCD_HOUR;
     msgRead.bytes[ PARAMETER_2 ] = VALID_BCD_MIN;
     msgRead.bytes[ PARAMETER_3 ] = VALID_BCD_SEC;
 
-    stateRet = Evaluate_Time_Parameters( &msgRead );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    TEST_ASSERT_EQUAL( stateRet, ERROR_ );
+    Evaluate_Time_Parameters( &msgRead );
+
+    TEST_ASSERT_EQUAL( msgRead.bytes[ MSG ], SERIAL_MSG_ERROR );
 }
 
-STATIC APP_state Evaluate_Date_Parameters( APP_CanTypeDef *msg );
+STATIC void Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr );
 
-void test__Evaluate_Date_Parameters__valid_date_return_OK_state( void )
+void test__Evaluate_Date_Parameters__valid_date_OK_MSG( void )
 {
     APP_CanTypeDef msgRead;
-    APP_state stateRet;
 
     msgRead.bytes[ PARAMETER_1 ] = VALID_BCD_DAY;
     msgRead.bytes[ PARAMETER_2 ] = VALID_BCD_MONTH;
     msgRead.bytes[ PARAMETER_3 ] = VALID_BCD_YEAR_MS;
     msgRead.bytes[ PARAMETER_4 ] = VALID_BCD_YEAR_LS;
 
-    stateRet = Evaluate_Date_Parameters( &msgRead );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    TEST_ASSERT_EQUAL( stateRet, OK );
+    Evaluate_Date_Parameters( &msgRead );
+
+    TEST_ASSERT_EQUAL( msgRead.bytes[ MSG ], SERIAL_MSG_OK );
 }
 
-void test__Evaluate_Date_Parameters__valid_date_leap_year_return_OK_state( void )
+void test__Evaluate_Date_Parameters__valid_date_leap_year_OK_MSG( void )
 {
     APP_CanTypeDef msgRead;
-    APP_state stateRet;
 
     msgRead.bytes[ PARAMETER_1 ] = VALID_BCD_DAY_LEAP;
     msgRead.bytes[ PARAMETER_2 ] = VALID_BCD_MONTH_LEAP;
     msgRead.bytes[ PARAMETER_3 ] = VALID_BCD_YEAR_MS_LEAP;
     msgRead.bytes[ PARAMETER_4 ] = VALID_BCD_YEAR_LS_LEAP;
 
-    stateRet = Evaluate_Date_Parameters( &msgRead );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    TEST_ASSERT_EQUAL( stateRet, OK );
+    Evaluate_Date_Parameters( &msgRead );
+
+    TEST_ASSERT_EQUAL( msgRead.bytes[ MSG ], SERIAL_MSG_OK );
 }
 
-void test__Evaluate_Date_Parameters__no_valid_date_return_ERROR_state( void )
+void test__Evaluate_Date_Parameters__no_valid_date_ERROR_MSG( void )
 {
     APP_CanTypeDef msgRead;
-    APP_state stateRet;
 
     msgRead.bytes[ PARAMETER_1 ] = NO_VALID_BCD_DAY;
     msgRead.bytes[ PARAMETER_2 ] = NO_VALID_BCD_MONTH;
     msgRead.bytes[ PARAMETER_3 ] = NO_VALID_BCD_YEAR_MS;
     msgRead.bytes[ PARAMETER_4 ] = VALID_BCD_YEAR_LS;
 
-    stateRet = Evaluate_Date_Parameters( &msgRead );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    TEST_ASSERT_EQUAL( stateRet, ERROR_ );
+    Evaluate_Date_Parameters( &msgRead );
+
+    TEST_ASSERT_EQUAL( msgRead.bytes[ MSG ], SERIAL_MSG_ERROR );
 }
 
-STATIC APP_state Evaluate_Alarm_Parameters( APP_CanTypeDef *msg );
+/*Tests function Evaluate_Alarm_Parameters*/
+STATIC void Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr );
 
-void test__Evaluate_Alarm_Parameters__valid_Alarm_return_OK_state( void )
+void test__Evaluate_Alarm_Parameters__valid_Alarm_OK_MSG( void )
 {
     APP_CanTypeDef msgRead;
-    APP_state stateRet;
 
     msgRead.bytes[ PARAMETER_1 ] = VALID_BCD_HOUR;
     msgRead.bytes[ PARAMETER_2 ] = VALID_BCD_MIN;
 
-    stateRet = Evaluate_Alarm_Parameters( &msgRead );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    TEST_ASSERT_EQUAL( stateRet, OK );
+    Evaluate_Alarm_Parameters( &msgRead );
+
+    TEST_ASSERT_EQUAL( msgRead.bytes[ MSG ], SERIAL_MSG_OK );
 }
 
-void test__Evaluate_Alarm_Parameters__no_valid_Alarm_return_ERROR_state( void )
+void test__Evaluate_Alarm_Parameters__no_valid_Alarm_ERROR_MSG( void )
 {
     APP_CanTypeDef msgRead;
-    APP_state stateRet;
 
     msgRead.bytes[ PARAMETER_1 ] = NO_VALID_BCD_HOUR;
     msgRead.bytes[ PARAMETER_2 ] = NO_VALID_BCD_MIN;
 
-    stateRet = Evaluate_Alarm_Parameters( &msgRead );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    TEST_ASSERT_EQUAL( stateRet, ERROR_ );
+    Evaluate_Alarm_Parameters( &msgRead );
+
+    TEST_ASSERT_EQUAL( msgRead.bytes[ MSG ], SERIAL_MSG_ERROR );
 }
 
-STATIC void Send_Ok_Message( void );
+STATIC void Send_Ok_Message( APP_CanTypeDef *SerialMsgPtr );
 
 void test__Send_Ok_Message( void )
 {
+    APP_CanTypeDef msgRead;
+
     HAL_FDCAN_AddMessageToTxFifoQ_IgnoreAndReturn( HAL_OK );
 
-    Send_Ok_Message();
+    Send_Ok_Message( &msgRead );
 }
 
-STATIC void Send_Error_Message( void );
+STATIC void Send_Error_Message( APP_CanTypeDef *SerialMsgPtr );
 
 void test__Send_Error_Message( void )
 {
+    APP_CanTypeDef msgRead;
+
     HAL_FDCAN_AddMessageToTxFifoQ_IgnoreAndReturn( HAL_OK );
 
-    Send_Error_Message();
+    Send_Error_Message( &msgRead );
 }
 
-void test__HAL_FDCAN_RxFifo0Callback__receive_single_frame_CAN_TP_msg( void )
+void test__HAL_FDCAN_RxFifo0Callback__receive_single_frame_CAN_TP_msg_time( void )
 {
     /*0xFF is a don't care value*/
     uint8_t msg_CanTP[ BYTES_CAN_MESSAGE ] = {SINGLE_FRAME_7_PAYLOAD, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    
+    FDCAN_RxHeaderTypeDef RxHeader;
+    RxHeader.Identifier = ID_TIME_MSG;
+
     HAL_FDCAN_GetRxMessage_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_FDCAN_GetRxMessage_ReturnThruPtr_pRxData( msg_CanTP );
+    HAL_FDCAN_GetRxMessage_ReturnMemThruPtr_pRxHeader( &RxHeader, sizeof(FDCAN_RxHeaderTypeDef) );
+
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
+
+    HAL_FDCAN_RxFifo0Callback( &CANHandler, FDCAN_IT_RX_FIFO0_NEW_MESSAGE );
+}
+
+void test__HAL_FDCAN_RxFifo0Callback__receive_single_frame_CAN_TP_msg_date( void )
+{
+    /*0xFF is a don't care value*/
+    uint8_t msg_CanTP[ BYTES_CAN_MESSAGE ] = {SINGLE_FRAME_7_PAYLOAD, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    FDCAN_RxHeaderTypeDef RxHeader;
+    RxHeader.Identifier = ID_DATE_MSG;
+
+    HAL_FDCAN_GetRxMessage_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_FDCAN_GetRxMessage_ReturnThruPtr_pRxData( msg_CanTP );
+    HAL_FDCAN_GetRxMessage_ReturnMemThruPtr_pRxHeader( &RxHeader, sizeof(FDCAN_RxHeaderTypeDef) );
+
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
+
+    HAL_FDCAN_RxFifo0Callback( &CANHandler, FDCAN_IT_RX_FIFO0_NEW_MESSAGE );
+}
+
+void test__HAL_FDCAN_RxFifo0Callback__receive_single_frame_CAN_TP_msg_alarm( void )
+{
+    /*0xFF is a don't care value*/
+    uint8_t msg_CanTP[ BYTES_CAN_MESSAGE ] = {SINGLE_FRAME_7_PAYLOAD, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    FDCAN_RxHeaderTypeDef RxHeader;
+    RxHeader.Identifier = ID_ALARM_MSG;
+
+    HAL_FDCAN_GetRxMessage_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_FDCAN_GetRxMessage_ReturnThruPtr_pRxData( msg_CanTP );
+    HAL_FDCAN_GetRxMessage_ReturnMemThruPtr_pRxHeader( &RxHeader, sizeof(FDCAN_RxHeaderTypeDef) );
+
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
+
+    HAL_FDCAN_RxFifo0Callback( &CANHandler, FDCAN_IT_RX_FIFO0_NEW_MESSAGE );
+}
+
+void test__HAL_FDCAN_RxFifo0Callback__receive_single_frame_CAN_TP_msg_id_unknown( void )
+{
+    /*0xFF is a don't care value*/
+    uint8_t msg_CanTP[ BYTES_CAN_MESSAGE ] = {SINGLE_FRAME_7_PAYLOAD, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    FDCAN_RxHeaderTypeDef RxHeader;
+    RxHeader.Identifier = UNKNOW_ID;
+
+    HAL_FDCAN_GetRxMessage_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_FDCAN_GetRxMessage_ReturnThruPtr_pRxData( msg_CanTP );
+    HAL_FDCAN_GetRxMessage_ReturnMemThruPtr_pRxHeader( &RxHeader, sizeof(FDCAN_RxHeaderTypeDef) );
+
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
     HAL_FDCAN_RxFifo0Callback( &CANHandler, FDCAN_IT_RX_FIFO0_NEW_MESSAGE );
 }
@@ -386,8 +366,9 @@ void test__HAL_FDCAN_RxFifo0Callback__receive_first_frame_CAN_TP_msg( void )
 {
     /*0xFF is a don't care value*/
     uint8_t msg_CanTP[ BYTES_CAN_MESSAGE ] = {FIRST_FRAME_CAN_TP, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    
+
     HAL_FDCAN_GetRxMessage_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_FDCAN_GetRxMessage_ReturnThruPtr_pRxData( msg_CanTP );
     HAL_FDCAN_GetRxMessage_ReturnThruPtr_pRxData( msg_CanTP );
 
     HAL_FDCAN_RxFifo0Callback( &CANHandler, FDCAN_IT_RX_FIFO0_NEW_MESSAGE );

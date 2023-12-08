@@ -223,8 +223,6 @@ unsigned char HIL_QUEUE_readDataISR( AppQue_Queue *queue, void *data )
  */
 unsigned char HIL_QUEUE_isQueueEmptyISR( const AppQue_Queue *queue )
 {
-    //__disable_irq( );
-    //__enable_irq( );
     return queue->Empty;
 }
 

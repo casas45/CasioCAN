@@ -9,10 +9,12 @@
 
 typedef enum
 {
-    SERIAL_MSG_NONE = 0,
-    SERIAL_MSG_TIME,
+    SERIAL_MSG_TIME = 0,
     SERIAL_MSG_DATE,
-    SERIAL_MSG_ALARM
+    SERIAL_MSG_ALARM,
+    SERIAL_MSG_OK,
+    SERIAL_MSG_ERROR,
+    SERIAL_MSG_NONE
 } APP_Messages;
 
 typedef struct _APP_TmTypeDef

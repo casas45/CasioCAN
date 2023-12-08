@@ -20,37 +20,35 @@ FDCAN_HandleTypeDef CANHandler;
 /*CAN header structure*/
 STATIC FDCAN_TxHeaderTypeDef CANTxHeader;
 
-static APP_MsgTypeDef tm_msg;
+static APP_MsgTypeDef ClkMsg;
 
 /* cppcheck-suppress misra-c2012-8.4 ; its extern linkage is defined in queue.h */
 STATIC AppQue_Queue queue;
 
-static APP_CanTypeDef readMsg;
 
 /*Functions prototypes*/
 STATIC void Serial_SingleFrameTx( uint8_t *data, uint8_t size );
 
 STATIC uint8_t Serial_SingleFrameRx( uint8_t *data, uint8_t *size);
 
-STATIC unsigned char Validate_LeapYear( unsigned short year );
+STATIC uint8_t Validate_LeapYear( uint16_t year );
 
-STATIC unsigned char Validate_Date( unsigned char days, unsigned char month, unsigned short year );
+STATIC uint8_t Validate_Date( uint8_t days, uint8_t month, uint16_t year );
 
-STATIC unsigned char WeekDay( unsigned char days, unsigned char month, unsigned short year );
+STATIC uint8_t WeekDay( uint8_t days, uint8_t month, uint16_t year );
 
-STATIC unsigned char Validate_Time (unsigned char hour, unsigned char minutes, unsigned char seconds);
+STATIC uint8_t Validate_Time ( uint8_t hour, uint8_t minutes, uint8_t seconds);
 
-STATIC APP_state Evaluate_Msg( AppQue_Queue *hqueue );
+STATIC void Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr );
 
-STATIC APP_state Evaluate_Time_Parameters( APP_CanTypeDef *msg );
+STATIC void Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr );
 
-STATIC APP_state Evaluate_Date_Parameters( APP_CanTypeDef *msg );
+STATIC void Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr );
 
-STATIC APP_state Evaluate_Alarm_Parameters( APP_CanTypeDef *msg );
+STATIC void Send_Ok_Message( APP_CanTypeDef *SerialMsgPtr );
 
-STATIC void Send_Ok_Message( void );
+STATIC void Send_Error_Message( APP_CanTypeDef *SerialMsgPtr );
 
-STATIC void Send_Error_Message( void );
 
 /**
  * @brief Interface to initialize all required about message processing.
@@ -125,62 +123,22 @@ void Serial_InitTask( void )
 */
 void Serial_PeriodicTask( void )
 {
-    static APP_state state = IDLE;
-
-    while ( ( HIL_QUEUE_isQueueEmptyISR( &queue ) == FALSE ) || ( state != IDLE ) )
+    void (*SerialEventMachine[]) ( APP_CanTypeDef *SerialMsgPtr ) = 
     {
-        switch ( state )
-        {
-            case IDLE:
-     
-                state = MESSAGE;  
+        Evaluate_Time_Parameters,
+        Evaluate_Date_Parameters,
+        Evaluate_Alarm_Parameters,
+        Send_Ok_Message,
+        Send_Error_Message
+    };
 
-                break;
-            
-            case MESSAGE:
+    APP_CanTypeDef SerialMsg;
 
-                state = Evaluate_Msg( &queue );
-
-                break;
-            
-            case TIME:
-
-                state = Evaluate_Time_Parameters( &readMsg );
-                
-                break;
-            
-            case DATE:
-
-                state = Evaluate_Date_Parameters( &readMsg );
-                
-                break;
-            
-            case ALARM:
-
-                state = Evaluate_Alarm_Parameters( &readMsg );
-
-                break;
-
-            case OK:
-                
-                Send_Ok_Message( );
-                state = IDLE;                
-
-                break;
-            
-            case ERROR_:
-
-                Send_Error_Message( );
-                state = IDLE;
-
-                break;
-            
-            default:
-                break;
-
-        }
+    while( HIL_QUEUE_isQueueEmptyISR( &queue ) == FALSE )
+    {
+        (void) HIL_QUEUE_readDataISR( &queue, &SerialMsg );
+        SerialEventMachine[ SerialMsg.bytes[ MSG ] ]( &SerialMsg );
     }
-    
     
 }
 
@@ -201,18 +159,37 @@ void HAL_FDCAN_RxFifo0Callback( FDCAN_HandleTypeDef *hfdcan, uint32_t TxEventFif
 {
     if ( TxEventFifoITs == FDCAN_IT_RX_FIFO0_NEW_MESSAGE )
     {
-        APP_CanTypeDef msg;
+        APP_CanTypeDef MsgCAN;
         /*structure CAN Rx Header*/
         FDCAN_RxHeaderTypeDef CANRxHeader;
 
         /*get the msg from fifo0*/
-        HAL_FDCAN_GetRxMessage( hfdcan, FDCAN_RX_FIFO0, &CANRxHeader, msg.bytes );
+        HAL_FDCAN_GetRxMessage( hfdcan, FDCAN_RX_FIFO0, &CANRxHeader, MsgCAN.bytes );
 
         /*evaluate if its a valid CAN-TP single frame*/
-        if ( Serial_SingleFrameRx( msg.bytes, &msg.lenght ) != FALSE )     
+        if ( Serial_SingleFrameRx( MsgCAN.bytes, &MsgCAN.lenght ) == TRUE )     
         {
-            msg.id = CANRxHeader.Identifier;                   /*get msg ID*/
-            (void) HIL_QUEUE_writeDataISR( &queue, &msg );     /*add msg to queue*/
+            MsgCAN.id = CANRxHeader.Identifier;                   /*get msg ID*/
+
+            switch( MsgCAN.id )
+            {
+                case ID_TIME_MSG:
+                    MsgCAN.bytes[MSG] = SERIAL_MSG_TIME;
+                    break;
+                
+                case ID_DATE_MSG:
+                    MsgCAN.bytes[MSG] = SERIAL_MSG_DATE;
+                    break;
+                
+                case ID_ALARM_MSG:
+                    MsgCAN.bytes[MSG] = SERIAL_MSG_ALARM;
+                    break;
+                
+                default:
+                    break;
+            }
+
+            (void) HIL_QUEUE_writeDataISR( &queue, &MsgCAN );     /*add msg to queue*/
         }
     }
 }
@@ -247,18 +224,6 @@ STATIC void Serial_SingleFrameTx( uint8_t *data, uint8_t size )
 }
 
 /**
- * @brief   Function to check if the year is leap or not.
- * 
- * @param   year[in] year value to be check.
- * 
- * @retval  TRUE if its a leap year and FALSE if not. 
-*/
-STATIC unsigned char Validate_LeapYear( unsigned short year )
-{
-    return ( (year % 400u) == 0u ) || ( ( (year % 4u) == 0u ) && ( (year % 100u) != 0u ) );
-}
-
-/**
  * @brief Function to unpack a msg in the CAN-TP single frame format.
  * 
  * The function will receive an array of 8 bytes of data with CAN-TP format where the first
@@ -274,22 +239,33 @@ STATIC unsigned char Validate_LeapYear( unsigned short year )
 */
 STATIC uint8_t Serial_SingleFrameRx( uint8_t *data, uint8_t *size)
 {
-    uint8_t varRet;
+    uint8_t varRet = FALSE;
     *size = data[0] & LS_NIBBLE_MASK;
 
-    if ( ( (data[0] >> 4u) == 0u ) && (*size > 0u) && (*size < N_BYTES_CAN_MSG) )  /*check if its a valid CAN-TP single frame*/
+    if ( ( (data[0] & MS_NIBBLE_MASK) == 0u ) && (*size > 0u) && (*size < N_BYTES_CAN_MSG) )  /*check if its a valid CAN-TP single frame*/
     {
-        varRet = TRUE;                         /*if it is, return the size*/
+        varRet = TRUE;                           /*if it is, return TRUE*/
         for (uint8_t i = 0u; i < *size; i++)     /*and remove the first byte of data*/
         {
             data[ i ] = data[ i + 1u ];
         }
         
-    }else{
-        varRet = FALSE;                             /*if it isn't just return 0*/
     }
     
     return varRet;
+}
+
+
+/**
+ * @brief   Function to check if the year is leap or not.
+ * 
+ * @param   year[in] year value to be check.
+ * 
+ * @retval  TRUE if its a leap year and FALSE if not. 
+*/
+STATIC uint8_t Validate_LeapYear( uint16_t year )
+{
+    return ( (year % 400u) == 0u ) || ( ( (year % 4u) == 0u ) && ( (year % 100u) != 0u ) );
 }
 
 /**
@@ -338,7 +314,7 @@ STATIC uint8_t Validate_Date( uint8_t days, uint8_t month, uint16_t year )
  * 
  * @retval  Return the week day (0 to 6 -> Sunday to Monday).
 */
-STATIC unsigned char WeekDay( unsigned char days, unsigned char month, unsigned short year ){
+STATIC uint8_t WeekDay( uint8_t days, uint8_t month, uint16_t year ){
     unsigned long part1;
     unsigned long part2;
     unsigned long part3;
@@ -379,49 +355,11 @@ STATIC unsigned char WeekDay( unsigned char days, unsigned char month, unsigned 
  * 
  * @retval  Returns TRUE when its a valid time and FALSE if it is not;
 */
-STATIC unsigned char Validate_Time (unsigned char hour, unsigned char minutes, unsigned char seconds)
+STATIC uint8_t Validate_Time (uint8_t hour, uint8_t minutes, uint8_t seconds)
 {
     return ( hour < 24u ) && ( minutes < 60u ) && ( seconds < 60u );
 }
 
-/**
- * @brief   Function to evaluate a msg id and return the corresponding state.
- * 
- * This function read a msg from the queue and then evaluate the msg ID to return the next state
- * depending the msg ID read.
- * 
- * @param   hqueue [in] queue where the msg will be read.
- * 
- * @retval  return the next state, it can be TIME, DATE, ALARM and ERROR_
- * 
-*/
-STATIC APP_state Evaluate_Msg( AppQue_Queue *hqueue )
-{
-    APP_state stateRet;
-
-    (void) HIL_QUEUE_readDataISR( hqueue, &readMsg );
-    
-    switch( readMsg.id )
-    {
-        case ID_TIME_MSG:
-            stateRet = TIME; 
-            break;
-
-        case ID_DATE_MSG:
-            stateRet = DATE;
-            break;
-        
-        case ID_ALARM_MSG:
-            stateRet = ALARM;
-            break;
-
-        default:
-            stateRet = ERROR_;
-            break;
-    }
-
-    return stateRet;
-}
 
 /**
  * @brief   Function to evaluate the time parameters of a message.
@@ -435,24 +373,25 @@ STATIC APP_state Evaluate_Msg( AppQue_Queue *hqueue )
  * @retval  return the next state, it can be OK and ERROR_
  * 
 */
-STATIC APP_state Evaluate_Time_Parameters( APP_CanTypeDef *msg )
-{
-    APP_state stateRet = ERROR_;
-    
-    uint8_t hour    = BCD_TO_BIN( msg->bytes[ PARAMETER_1 ] );     /*time parameter 1*/
-    uint8_t minutes = BCD_TO_BIN( msg->bytes[ PARAMETER_2 ] );     /*time parameter 2*/
-    uint8_t seconds = BCD_TO_BIN( msg->bytes[ PARAMETER_3 ] );     /*time parameter 3*/
+STATIC void Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr )
+{   
+    SerialMsgPtr->bytes[MSG] = SERIAL_MSG_ERROR;
 
+    uint8_t hour    = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_1 ] );     /*time parameter 1*/
+    uint8_t minutes = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_2 ] );     /*time parameter 2*/
+    uint8_t seconds = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_3 ] );     /*time parameter 3*/
+    
     if ( Validate_Time( hour, minutes, seconds ) == TRUE )
     {
-        stateRet          = OK;
-        tm_msg.msg        = SERIAL_MSG_TIME;
-        tm_msg.tm.tm_hour = hour;
-        tm_msg.tm.tm_min  = minutes;
-        tm_msg.tm.tm_sec  = seconds;
+        SerialMsgPtr->bytes[MSG] = SERIAL_MSG_OK;
+        ClkMsg.msg        = SERIAL_MSG_TIME;
+        ClkMsg.tm.tm_hour = hour;
+        ClkMsg.tm.tm_min  = minutes;
+        ClkMsg.tm.tm_sec  = seconds;
     }
 
-    return stateRet;
+    (void) HIL_QUEUE_writeDataISR( &queue, SerialMsgPtr );
+
 }
 
 /**
@@ -467,26 +406,27 @@ STATIC APP_state Evaluate_Time_Parameters( APP_CanTypeDef *msg )
  * @retval  return the next state, it can be OK and ERROR_
  * 
 */
-STATIC APP_state Evaluate_Date_Parameters( APP_CanTypeDef *msg )
+STATIC void Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr )
 {
-    APP_state stateRet = ERROR_;
+    SerialMsgPtr->bytes[MSG] = SERIAL_MSG_ERROR;
 
-    uint8_t day   = BCD_TO_BIN( msg->bytes[ PARAMETER_1 ] );           /*date parameter 1*/
-    uint8_t month = BCD_TO_BIN( msg->bytes[ PARAMETER_2 ] );           /*date parameter 2*/
-    uint16_t year = BCD_TO_BIN( msg->bytes[ PARAMETER_3 ] ) * 100u;     /*param 3 * 100 to get two most significant figures of the year */
-    year += BCD_TO_BIN( msg->bytes[ PARAMETER_4 ] );                   /*add param 4 */
+    uint8_t day   = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_1 ] );           /*date parameter 1*/
+    uint8_t month = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_2 ] );           /*date parameter 2*/
+    uint16_t year = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_3 ] ) * 100u;     /*param 3 * 100 to get two most significant figures of the year */
+    year += BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_4 ] );                   /*add param 4 */
     
     if( Validate_Date( day, month, year ) == TRUE )
     {
-        stateRet = OK;
-        tm_msg.msg        = SERIAL_MSG_DATE;
-        tm_msg.tm.tm_mday = day;
-        tm_msg.tm.tm_mon  = month;
-        tm_msg.tm.tm_year = year;
-        tm_msg.tm.tm_wday = WeekDay( day, month, year );
+        SerialMsgPtr->bytes[MSG] = SERIAL_MSG_OK;
+        ClkMsg.msg        = SERIAL_MSG_DATE;
+        ClkMsg.tm.tm_mday = day;
+        ClkMsg.tm.tm_mon  = month;
+        ClkMsg.tm.tm_year = year;
+        ClkMsg.tm.tm_wday = WeekDay( day, month, year );
     }
 
-    return stateRet;
+    (void) HIL_QUEUE_writeDataISR( &queue, SerialMsgPtr );
+
 }
 
 /**
@@ -501,20 +441,20 @@ STATIC APP_state Evaluate_Date_Parameters( APP_CanTypeDef *msg )
  * @retval  return the next state, it can be OK and ERROR_
  * 
 */
-STATIC APP_state Evaluate_Alarm_Parameters( APP_CanTypeDef *msg )
+STATIC void Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr )
 {
-    APP_state stateRet = ERROR_;
+    SerialMsgPtr->bytes[MSG] = SERIAL_MSG_ERROR;
 
-    uint8_t hour    = BCD_TO_BIN( msg->bytes[ PARAMETER_1 ] );     /*Alarm parameter 1*/
-    uint8_t minutes = BCD_TO_BIN( msg->bytes[ PARAMETER_2 ] );     /*Alarm parameter 2*/
+    uint8_t hour    = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_1 ] );     /*Alarm parameter 1*/
+    uint8_t minutes = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_2 ] );     /*Alarm parameter 2*/
 
     if ( Validate_Time( hour, minutes, VALID_SECONDS_PARAM ) == TRUE )
     {
-        stateRet = OK;
-        tm_msg.msg = SERIAL_MSG_ALARM;
+        SerialMsgPtr->bytes[MSG] = SERIAL_MSG_OK;
+        ClkMsg.msg = SERIAL_MSG_ALARM;
     }
 
-    return stateRet;
+    (void) HIL_QUEUE_writeDataISR( &queue, SerialMsgPtr );
 }
 
 /**
@@ -526,8 +466,9 @@ STATIC APP_state Evaluate_Alarm_Parameters( APP_CanTypeDef *msg )
  * 
  * 
 */
-STATIC void Send_Ok_Message( void )
+STATIC void Send_Ok_Message( APP_CanTypeDef *SerialMsgPtr )
 {
+    (void) SerialMsgPtr;
     uint8_t data[ N_BYTES_CAN_MSG ] = {0};
     data[ PARAMETER_1 ] = OK_RESPONSE;
 
@@ -545,8 +486,9 @@ STATIC void Send_Ok_Message( void )
  * 
  * 
 */
-STATIC void Send_Error_Message( void )
+STATIC void Send_Error_Message( APP_CanTypeDef *SerialMsgPtr )
 { 
+    (void) SerialMsgPtr;
     uint8_t data[ N_BYTES_CAN_MSG ] = {0};
     data[ PARAMETER_1 ] = ERROR_RESPONSE;
 

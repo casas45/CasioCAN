@@ -17,7 +17,7 @@
 #define ID_DATE_MSG         0x127u      /*!< DATE ID*/
 #define ID_ALARM_MSG        0x101u      /*!< ALARM ID*/
 #define FILTER_MASK         0x7FFu      /*!< Mask to indicate how many bit take in acount to filter*/
-#define MESSAGES_N          0x0Au       /*!< Number of messages that can be received in 10 ms*/
+#define MESSAGES_N          0x14u       /*!< Number of messages that can be received in 10 ms*/
 #define VALID_SECONDS_PARAM 0x00u       /*!< A valid value for seconds*/
 #define RESPONSE_ID         0x122u      /*!< RESPONSE ID*/
 #define OK_RESPONSE         0x55u       /*!< Parameter 1 of OK response*/
@@ -28,6 +28,7 @@
 #define PARAMETER_2         0x01u       /*!< Position in data of parameter 2*/
 #define PARAMETER_3         0x02u       /*!< Position in data of parameter 3*/
 #define PARAMETER_4         0x03u       /*!< Position in data of parameter 4*/
+#define MSG                 0x04u       /*!< Position of msg type*/
 #define MONTHS              0x0Cu       /*!< Number of months in a year*/
 #define MONTH_31_D          0x1Fu       /*!< Number of days (31)*/
 #define MONTH_30_D          0X1Eu       /*!< Number of days (30)*/

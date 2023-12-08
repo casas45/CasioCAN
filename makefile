@@ -83,7 +83,7 @@ VPATH = $(SRC_PATHS)
 INCLS = $(addprefix -I ,$(INC_PATHS))
 
 #---Build project----------------------------------------------------------------------------------
-all : build $(TARGET)
+all : lint build $(TARGET)
 
 $(TARGET) : $(addprefix Build/, $(TARGET).elf)
 	$(TOOLCHAIN)-objcopy -Oihex $< Build/$(TARGET).hex
