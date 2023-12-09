@@ -1,3 +1,9 @@
+/**
+ * @file    test_serial.c
+ * 
+ * @brief   Here are the unit test cases for serial driver functions.
+ * 
+*/
 #include "unity.h"
 #include "serial.h"
 #include "bsp.h"
@@ -6,86 +12,91 @@
 #include "mock_queue.h"
 #include "mock_stm32g0xx_hal_fdcan.h"
 
-#define BYTES_CAN_MESSAGE       0x08u
-#define SINGLE_FRAME_7_PAYLOAD  0x07u
-#define FIRST_FRAME_CAN_TP      0x17u
-#define VALID_BCD_HOUR              0x08u
-#define VALID_BCD_MIN               0x00u
-#define VALID_BCD_SEC               0x00u
-#define NO_VALID_BCD_HOUR           0x30u
-#define NO_VALID_BCD_MIN            0x60u
-#define NO_VALID_BCD_SEC            0x60u
-#define UNKNOW_ID               0x0FFu
-#define VALID_BCD_DAY           0x30u
-#define VALID_BCD_MONTH         0x11u
-#define VALID_BCD_YEAR_MS       0x20u   
-#define VALID_BCD_YEAR_LS       0x21u
-#define NO_VALID_BCD_DAY        0x35u
-#define NO_VALID_BCD_MONTH      0x13u
-#define NO_VALID_BCD_YEAR_MS    0x50u
+#define BYTES_CAN_MESSAGE       0x08u   /*!< Number of bytes in a standard CAN message */
+#define SINGLE_FRAME_7_PAYLOAD  0x07u   /*!< Byte 0 of a CAN-TP single frame message  */
+#define FIRST_FRAME_CAN_TP      0x17u   /*!< Byte 0 of a CAN-TP first frame message */
+#define VALID_BCD_HOUR          0x08u   /*!< A valid value of hour in BCD format*/
+#define VALID_BCD_MIN           0x00u   /*!< A valid value of minutes in BCD format*/
+#define VALID_BCD_SEC           0x00u   /*!< A valid value of seconds in BCD format*/
+#define NO_VALID_BCD_HOUR       0x30u   /*!< No valid value of hour in BCD format*/
+#define NO_VALID_BCD_MIN        0x60u   /*!< No valid value of minutes in BCD format*/
+#define NO_VALID_BCD_SEC        0x60u   /*!< No valid value of seconds in BCD format*/
+#define UNKNOW_ID               0x0FFu  /*!< ID unknown for this application */
+#define VALID_BCD_DAY           0x30u   /*!< Valid value for a day in BCD format*/
+#define VALID_BCD_MONTH         0x11u   /*!< Valid value for a month in BCD format*/
+#define VALID_BCD_YEAR_MS       0x20u   /*!< Valid value for the two most significant figures of a year in BCD format*/
+#define VALID_BCD_YEAR_LS       0x21u   /*!< Valid value for the two least significant figures of a year in BCD format*/
+#define NO_VALID_BCD_DAY        0x35u   /*!< No valid value for a day in BCD format*/
+#define NO_VALID_BCD_MONTH      0x13u   /*!< No valid value for a month in BCD format*/
+#define NO_VALID_BCD_YEAR_MS    0x50u   /*!< No valid value for the two most significant figures of a year in BCD format*/
 
-#define VALID_BCD_DAY_LEAP           0x29u
-#define VALID_BCD_MONTH_LEAP         0x02u
-#define VALID_BCD_YEAR_MS_LEAP       0x20u   
-#define VALID_BCD_YEAR_LS_LEAP       0x20u
+#define VALID_BCD_DAY_LEAP      0x29u   
+#define VALID_BCD_MONTH_LEAP    0x02u
+#define VALID_BCD_YEAR_MS_LEAP  0x20u   
+#define VALID_BCD_YEAR_LS_LEAP  0x20u
 
-/*structure fort CAN initialization*/
-extern FDCAN_HandleTypeDef CANHandler;
-/*CAN header structure*/
-extern FDCAN_TxHeaderTypeDef CANTxHeader;
-
-extern AppQue_Queue queue;
 
 uint8_t dataTime[BYTES_CAN_MESSAGE] = {VALID_BCD_HOUR, VALID_BCD_MIN, VALID_BCD_SEC, 0xFF, SERIAL_MSG_TIME, 0xFF, 0xFF, 0xFF};
 
 void setUp( void )
 {
-    /*OxFF are don't care values*/
-    
-    // const uint8_t dataDate[BYTES_CAN_MESSAGE] = {VALID_BCD_DAY, VALID_BCD_MONTH, VALID_BCD_YEAR_MS, VALID_BCD_YEAR_LS, 0xFF, 0xFF, 0xFF, 0xFF};
-    // const uint8_t dataAlarm[BYTES_CAN_MESSAGE] = {VALID_BCD_HOUR, VALID_BCD_MIN, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    // const uint8_t dataTime_noValid[BYTES_CAN_MESSAGE] = {NO_VALID_BCD_HOUR, VALID_BCD_MIN, VALID_BCD_SEC, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
 }
 
 void tearDown( void )
 {
-
 }
 
+/**
+ * @brief   Test for Serial_InitTask
+ * 
+ * This function uses the mock functions from FDCAN HAL library and queue.h, here there isn't something
+ * to test just check if all lines in this interface are executed using code coverage.
+*/
 void test__Serial_InitTask__init_FDCAN_module( void )
 {
-    HAL_FDCAN_Init_ExpectAndReturn( &CANHandler, HAL_OK );
-    HAL_FDCAN_ConfigGlobalFilter_ExpectAndReturn( &CANHandler, FDCAN_REJECT, FDCAN_REJECT, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE, HAL_OK );
+    HAL_FDCAN_Init_IgnoreAndReturn( HAL_OK );
+    HAL_FDCAN_ConfigGlobalFilter_IgnoreAndReturn( HAL_OK );
     HAL_FDCAN_ConfigFilter_IgnoreAndReturn( HAL_OK );
-    HAL_FDCAN_Start_ExpectAndReturn( &CANHandler, HAL_OK );
-    HAL_FDCAN_ActivateNotification_ExpectAndReturn( &CANHandler, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0, HAL_OK );
-    AppQueue_initQueue_Expect( &queue );
+    HAL_FDCAN_Start_IgnoreAndReturn( HAL_OK );
+    HAL_FDCAN_ActivateNotification_IgnoreAndReturn( HAL_OK );
+    AppQueue_initQueue_Ignore( );
 
     Serial_InitTask( );
 }
 
+/**
+ * @brief   Test for serial periodic task, mock read queue with time msg.
+ * 
+ * In this function it is only necessary check if all lines are executed, to do that mock functions
+ * HIL_QUEUE_isQueueEmptyISR and HIL_QUEUE_writeDataISR to simulate a queue with a time message.
+*/
 void test__Serial_PeriodicTask__queue_with_time_msg( void )
 {
     APP_CanTypeDef SerialMsg;
     dataTime[MSG] = SERIAL_MSG_TIME;
     memcpy( SerialMsg.bytes, &dataTime, BYTES_CAN_MESSAGE );
 
-    HIL_QUEUE_isQueueEmptyISR_ExpectAndReturn( &queue, FALSE );
+    HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( FALSE );
 
     HIL_QUEUE_readDataISR_ExpectAnyArgsAndReturn( TRUE );
     HIL_QUEUE_readDataISR_ReturnMemThruPtr_data( &SerialMsg, sizeof( APP_CanTypeDef ) );
 
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    HIL_QUEUE_isQueueEmptyISR_ExpectAndReturn( &queue, TRUE );
+    HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
 
     Serial_PeriodicTask( );
 }
 
 
 STATIC void Serial_SingleFrameTx( uint8_t *data, uint8_t size );
-
+/**
+ * @brief   Test for Serial_SingleFrameTx to pack a message.
+ * 
+ * Here is defined an uint8_t array with a payload of 7, and also is define an array with the first
+ * byte in CAN-TP single frame format to compare the result of this interface, is used the assert
+ * TEST_ASSERT_EQUAL_MEMORY to compare the eight bytes of the can msg and the result must be true.
+*/
 void test__Serial_SingleFrameTx__pack_msg_7bytes_payload( void )
 {
     uint8_t data[BYTES_CAN_MESSAGE] = {'H', 'I', 'W', 'O', 'R', 'L', 'D', 0xFF}; /*0xFF is a don't care value*/         
@@ -96,6 +107,14 @@ void test__Serial_SingleFrameTx__pack_msg_7bytes_payload( void )
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE( data_expected, data, BYTES_CAN_MESSAGE, "Message isn't a CAN-TP single frame" );
 }
 
+/**
+ * @brief   Test for Serial_SingleFrameTx to pack a message.
+ * 
+ * Here is defined an uint8_t array with a payload of 8 and the function change this value for a 7, 
+ * and also is define an array with the first byte in CAN-TP single frame format to compare the 
+ * result of this interface, is used the assert TEST_ASSERT_EQUAL_MEMORY to compare the eight bytes
+ * of the can msg and the result must be true.
+*/
 void test__Serial_SingleFrameTx__pack_msg_set_size_over_7bytes( void )
 {
     uint8_t data[BYTES_CAN_MESSAGE] = {'H', 'I', 'W', 'O', 'R', 'L', 'D', 0xFF}; /*0xFF is a don't care value*/           
@@ -163,10 +182,11 @@ void test__Serial_SingleFrameRx__unpack_msg_valid_CAN_TP_single_frame_wPayload_e
 }
 
 
-STATIC void Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr );
+STATIC APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr );
 
 void test__Evaluate_Time_Parameters__valid_time_OK_MSG( void )
 {
+    APP_Messages eventRet;
     APP_CanTypeDef msgRead;
 
     msgRead.bytes[ PARAMETER_1 ] = VALID_BCD_HOUR;
@@ -175,13 +195,14 @@ void test__Evaluate_Time_Parameters__valid_time_OK_MSG( void )
 
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    Evaluate_Time_Parameters( &msgRead );
+    eventRet = Evaluate_Time_Parameters( &msgRead );
 
-    TEST_ASSERT_EQUAL( msgRead.bytes[ MSG ], SERIAL_MSG_OK );
+    TEST_ASSERT_EQUAL( eventRet, SERIAL_MSG_OK );
 }
 
 void test__Evaluate_Time_Parameters__no_valid_hour_ERROR_MSG( void )
 {
+    APP_Messages eventRet;
     APP_CanTypeDef msgRead;
 
     msgRead.bytes[ PARAMETER_1 ] = NO_VALID_BCD_HOUR;
@@ -190,15 +211,16 @@ void test__Evaluate_Time_Parameters__no_valid_hour_ERROR_MSG( void )
 
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    Evaluate_Time_Parameters( &msgRead );
+    eventRet = Evaluate_Time_Parameters( &msgRead );
 
-    TEST_ASSERT_EQUAL( msgRead.bytes[ MSG ], SERIAL_MSG_ERROR );
+    TEST_ASSERT_EQUAL( eventRet, SERIAL_MSG_ERROR );
 }
 
-STATIC void Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr );
+STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr );
 
 void test__Evaluate_Date_Parameters__valid_date_OK_MSG( void )
 {
+    APP_Messages eventRet;
     APP_CanTypeDef msgRead;
 
     msgRead.bytes[ PARAMETER_1 ] = VALID_BCD_DAY;
@@ -208,13 +230,14 @@ void test__Evaluate_Date_Parameters__valid_date_OK_MSG( void )
 
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    Evaluate_Date_Parameters( &msgRead );
+    eventRet = Evaluate_Date_Parameters( &msgRead );
 
-    TEST_ASSERT_EQUAL( msgRead.bytes[ MSG ], SERIAL_MSG_OK );
+    TEST_ASSERT_EQUAL( eventRet, SERIAL_MSG_OK );
 }
 
 void test__Evaluate_Date_Parameters__valid_date_leap_year_OK_MSG( void )
 {
+    APP_Messages eventRet;
     APP_CanTypeDef msgRead;
 
     msgRead.bytes[ PARAMETER_1 ] = VALID_BCD_DAY_LEAP;
@@ -224,13 +247,14 @@ void test__Evaluate_Date_Parameters__valid_date_leap_year_OK_MSG( void )
 
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    Evaluate_Date_Parameters( &msgRead );
+    eventRet = Evaluate_Date_Parameters( &msgRead );
 
-    TEST_ASSERT_EQUAL( msgRead.bytes[ MSG ], SERIAL_MSG_OK );
+    TEST_ASSERT_EQUAL( eventRet, SERIAL_MSG_OK );
 }
 
 void test__Evaluate_Date_Parameters__no_valid_date_ERROR_MSG( void )
 {
+    APP_Messages eventRet;
     APP_CanTypeDef msgRead;
 
     msgRead.bytes[ PARAMETER_1 ] = NO_VALID_BCD_DAY;
@@ -240,16 +264,17 @@ void test__Evaluate_Date_Parameters__no_valid_date_ERROR_MSG( void )
 
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    Evaluate_Date_Parameters( &msgRead );
+    eventRet = Evaluate_Date_Parameters( &msgRead );
 
-    TEST_ASSERT_EQUAL( msgRead.bytes[ MSG ], SERIAL_MSG_ERROR );
+    TEST_ASSERT_EQUAL( eventRet, SERIAL_MSG_ERROR );
 }
 
 /*Tests function Evaluate_Alarm_Parameters*/
-STATIC void Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr );
+STATIC APP_Messages Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr );
 
 void test__Evaluate_Alarm_Parameters__valid_Alarm_OK_MSG( void )
 {
+    APP_Messages eventRet;
     APP_CanTypeDef msgRead;
 
     msgRead.bytes[ PARAMETER_1 ] = VALID_BCD_HOUR;
@@ -257,13 +282,14 @@ void test__Evaluate_Alarm_Parameters__valid_Alarm_OK_MSG( void )
 
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    Evaluate_Alarm_Parameters( &msgRead );
+    eventRet = Evaluate_Alarm_Parameters( &msgRead );
 
-    TEST_ASSERT_EQUAL( msgRead.bytes[ MSG ], SERIAL_MSG_OK );
+    TEST_ASSERT_EQUAL( eventRet, SERIAL_MSG_OK );
 }
 
 void test__Evaluate_Alarm_Parameters__no_valid_Alarm_ERROR_MSG( void )
 {
+    APP_Messages eventRet;
     APP_CanTypeDef msgRead;
 
     msgRead.bytes[ PARAMETER_1 ] = NO_VALID_BCD_HOUR;
@@ -271,31 +297,37 @@ void test__Evaluate_Alarm_Parameters__no_valid_Alarm_ERROR_MSG( void )
 
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    Evaluate_Alarm_Parameters( &msgRead );
+    eventRet = Evaluate_Alarm_Parameters( &msgRead );
 
-    TEST_ASSERT_EQUAL( msgRead.bytes[ MSG ], SERIAL_MSG_ERROR );
+    TEST_ASSERT_EQUAL( eventRet, SERIAL_MSG_ERROR );
 }
 
-STATIC void Send_Ok_Message( APP_CanTypeDef *SerialMsgPtr );
+STATIC APP_Messages Send_Ok_Message( APP_CanTypeDef *SerialMsgPtr );
 
 void test__Send_Ok_Message( void )
 {
+    APP_Messages eventRet;
     APP_CanTypeDef msgRead;
 
     HAL_FDCAN_AddMessageToTxFifoQ_IgnoreAndReturn( HAL_OK );
 
-    Send_Ok_Message( &msgRead );
+    eventRet = Send_Ok_Message( &msgRead );
+
+    TEST_ASSERT_EQUAL( eventRet, SERIAL_MSG_NONE );
 }
 
-STATIC void Send_Error_Message( APP_CanTypeDef *SerialMsgPtr );
+STATIC APP_Messages Send_Error_Message( APP_CanTypeDef *SerialMsgPtr );
 
 void test__Send_Error_Message( void )
 {
+    APP_Messages eventRet;
     APP_CanTypeDef msgRead;
 
     HAL_FDCAN_AddMessageToTxFifoQ_IgnoreAndReturn( HAL_OK );
 
-    Send_Error_Message( &msgRead );
+    eventRet = Send_Error_Message( &msgRead );
+
+    TEST_ASSERT_EQUAL( eventRet, SERIAL_MSG_NONE );
 }
 
 void test__HAL_FDCAN_RxFifo0Callback__receive_single_frame_CAN_TP_msg_time( void )

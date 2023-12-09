@@ -29,7 +29,6 @@ void SysTick_Handler( void )
     HAL_IncTick( );
 }
 
-extern FDCAN_HandleTypeDef CANHandler;
 
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
 void TIM16_FDCAN_IT0_IRQHandler( void )

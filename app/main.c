@@ -11,7 +11,6 @@
  *          Build/doxigen/html/index.html
  */
 #include "bsp.h"
-#include "serial.h"
 
 #define TASKS_N         1u
 #define TICK_VAL        5u

@@ -12,18 +12,15 @@
 
 #define BCD_TO_BIN( x ) ( ( ( (x) >> 4u ) * 10u ) + ( (x) & 0x0Fu ) ) /*!< Macro to conver BCD data to an integer */
 
-/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is defined in HAL library */
 /*structure fort CAN initialization*/
 FDCAN_HandleTypeDef CANHandler;
 
-/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is defined in HAL library */
 /*CAN header structure*/
-STATIC FDCAN_TxHeaderTypeDef CANTxHeader;
+static FDCAN_TxHeaderTypeDef CANTxHeader;
 
 static APP_MsgTypeDef ClkMsg;
 
-/* cppcheck-suppress misra-c2012-8.4 ; its extern linkage is defined in queue.h */
-STATIC AppQue_Queue queue;
+static AppQue_Queue queue;
 
 
 /*Functions prototypes*/
@@ -39,15 +36,15 @@ STATIC uint8_t WeekDay( uint8_t days, uint8_t month, uint16_t year );
 
 STATIC uint8_t Validate_Time ( uint8_t hour, uint8_t minutes, uint8_t seconds);
 
-STATIC void Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr );
+STATIC APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr );
 
-STATIC void Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr );
+STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr );
 
-STATIC void Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr );
+STATIC APP_Messages Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr );
 
-STATIC void Send_Ok_Message( APP_CanTypeDef *SerialMsgPtr );
+STATIC APP_Messages Send_Ok_Message( APP_CanTypeDef *SerialMsgPtr );
 
-STATIC void Send_Error_Message( APP_CanTypeDef *SerialMsgPtr );
+STATIC APP_Messages Send_Error_Message( APP_CanTypeDef *SerialMsgPtr );
 
 
 /**
@@ -118,12 +115,12 @@ void Serial_InitTask( void )
 /**
  * @brief Interface to implement state machine.
  * 
- * The state machine implementation is made using a switch statement, in each case a function
- * is called depending the state to do the message processing.
+ * The event machine implementation is made using a pointer to functions, in each case a function
+ * is called depending on the type of msg read from the queue.
 */
 void Serial_PeriodicTask( void )
 {
-    void (*SerialEventMachine[]) ( APP_CanTypeDef *SerialMsgPtr ) = 
+    APP_Messages (*SerialEventMachine[ 5 ]) ( APP_CanTypeDef *SerialMsgPtr ) = 
     {
         Evaluate_Time_Parameters,
         Evaluate_Date_Parameters,
@@ -137,7 +134,7 @@ void Serial_PeriodicTask( void )
     while( HIL_QUEUE_isQueueEmptyISR( &queue ) == FALSE )
     {
         (void) HIL_QUEUE_readDataISR( &queue, &SerialMsg );
-        SerialEventMachine[ SerialMsg.bytes[ MSG ] ]( &SerialMsg );
+        (void) SerialEventMachine[ SerialMsg.bytes[ MSG ] ]( &SerialMsg );
     }
     
 }
@@ -255,6 +252,156 @@ STATIC uint8_t Serial_SingleFrameRx( uint8_t *data, uint8_t *size)
     return varRet;
 }
 
+/**
+ * @brief   Function to evaluate the time parameters of a message.
+ * 
+ * This function receive the memmory address of a read message and uses the MACRO BCD_TO_BIN
+ * to convert the message parameter and then evaluate if are valid, in true case save the time
+ * in the tm_msg struct and change the type of msg to SERIAL_MSG_OK. 
+ * 
+ * @param   SerialMsgPtr [in] is the message with time parameters.
+ * 
+ * 
+*/
+STATIC APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr )
+{   
+    APP_Messages eventRet = SERIAL_MSG_ERROR;
+
+    SerialMsgPtr->bytes[MSG] = SERIAL_MSG_ERROR;
+
+    uint8_t hour    = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_1 ] );     /*time parameter 1*/
+    uint8_t minutes = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_2 ] );     /*time parameter 2*/
+    uint8_t seconds = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_3 ] );     /*time parameter 3*/
+    
+    if ( Validate_Time( hour, minutes, seconds ) == TRUE )
+    {
+        eventRet = SERIAL_MSG_OK;
+        SerialMsgPtr->bytes[MSG] = SERIAL_MSG_OK;
+        ClkMsg.msg        = SERIAL_MSG_TIME;
+        ClkMsg.tm.tm_hour = hour;
+        ClkMsg.tm.tm_min  = minutes;
+        ClkMsg.tm.tm_sec  = seconds;
+    }
+
+    (void) HIL_QUEUE_writeDataISR( &queue, SerialMsgPtr );
+
+    return eventRet;
+}
+
+/**
+ * @brief   Function to evaluate the date parameters of a message.
+ * 
+ * This function receive the memmory address of a read message and uses the MACRO BCD_TO_BIN
+ * to convert the message parameter and then evaluate if are valid, in true case save the time
+ * in the ClkMsg struct and change the type of msg to SERIAL_MSG_OK.  
+ * 
+ * @param   SerialMsgPtr [in] is the message with date parameters.
+ * 
+ * 
+*/
+STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr )
+{
+    APP_Messages eventRet = SERIAL_MSG_ERROR;
+
+    SerialMsgPtr->bytes[MSG] = SERIAL_MSG_ERROR;
+
+    uint8_t day   = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_1 ] );           /*date parameter 1*/
+    uint8_t month = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_2 ] );           /*date parameter 2*/
+    uint16_t year = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_3 ] ) * 100u;     /*param 3 * 100 to get two most significant figures of the year */
+    year += BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_4 ] );                   /*add param 4 */
+    
+    if( Validate_Date( day, month, year ) == TRUE )
+    {
+        eventRet = SERIAL_MSG_OK;
+        SerialMsgPtr->bytes[MSG] = SERIAL_MSG_OK;
+        ClkMsg.msg        = SERIAL_MSG_DATE;
+        ClkMsg.tm.tm_mday = day;
+        ClkMsg.tm.tm_mon  = month;
+        ClkMsg.tm.tm_year = year;
+        ClkMsg.tm.tm_wday = WeekDay( day, month, year );
+    }
+
+    (void) HIL_QUEUE_writeDataISR( &queue, SerialMsgPtr );
+
+    return eventRet;
+}
+
+/**
+ * @brief   Function to evaluate the alarm parameters of a message.
+ * 
+ * This function receive the memmory address of a read message and uses the MACRO BCD_TO_BIN
+ * to convert the message parameters and then evaluate if are valid, in true case save the time
+ * in the ClkMsg struct and change the type of msg to SERIAL_MSG_OK.  
+ * 
+ * @param   SerialMsgPtr [in] is the message with alarm parameters.
+*/
+STATIC APP_Messages Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr )
+{
+    APP_Messages eventRet = SERIAL_MSG_ERROR;
+
+    SerialMsgPtr->bytes[MSG] = SERIAL_MSG_ERROR;
+
+    uint8_t hour    = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_1 ] );     /*Alarm parameter 1*/
+    uint8_t minutes = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_2 ] );     /*Alarm parameter 2*/
+
+    if ( Validate_Time( hour, minutes, VALID_SECONDS_PARAM ) == TRUE )
+    {
+        eventRet = SERIAL_MSG_OK;
+        SerialMsgPtr->bytes[MSG] = SERIAL_MSG_OK;
+        ClkMsg.msg = SERIAL_MSG_ALARM;
+    }
+
+    (void) HIL_QUEUE_writeDataISR( &queue, SerialMsgPtr );
+
+    return eventRet;
+}
+
+/**
+ * @brief   Function to send a "OK" message.
+ * 
+ * This function define an array and append to it in the parameter 1 the OK message that is a value
+ * of 0x55 and uses the Serial_SingleFrameTx to pack it in the CAN-TP format, this msg is sent with
+ * the RESPONSE_ID (0x122).  
+ * 
+ * 
+*/
+STATIC APP_Messages Send_Ok_Message( APP_CanTypeDef *SerialMsgPtr )
+{
+    APP_Messages eventRet = SERIAL_MSG_NONE;
+    
+    (void) SerialMsgPtr;
+    uint8_t data[ N_BYTES_CAN_MSG ] = {0};
+    data[ PARAMETER_1 ] = OK_RESPONSE;
+
+    Serial_SingleFrameTx( data, N_BYTES_RESPONSE );
+
+    HAL_FDCAN_AddMessageToTxFifoQ( &CANHandler, &CANTxHeader, data );
+
+    return eventRet;
+}
+
+/**
+ * @brief   Function to send an "ERROR" message.
+ * 
+ * This function define an array and append to it in the parameter 1 the ERROR message that is a value
+ * of 0xAA and uses the Serial_SingleFrameTx to pack it in the CAN-TP format, this msg is sent with
+ * the RESPONSE_ID (0x122).  
+*/
+STATIC APP_Messages Send_Error_Message( APP_CanTypeDef *SerialMsgPtr )
+{ 
+    APP_Messages eventRet = SERIAL_MSG_NONE;
+
+    (void) SerialMsgPtr;
+    uint8_t data[ N_BYTES_CAN_MSG ] = {0};
+    data[ PARAMETER_1 ] = ERROR_RESPONSE;
+
+    Serial_SingleFrameTx( data, N_BYTES_RESPONSE );
+
+    HAL_FDCAN_AddMessageToTxFifoQ( &CANHandler, &CANTxHeader, data );
+
+    return eventRet;
+}
+
 
 /**
  * @brief   Function to check if the year is leap or not.
@@ -358,141 +505,4 @@ STATIC uint8_t WeekDay( uint8_t days, uint8_t month, uint16_t year ){
 STATIC uint8_t Validate_Time (uint8_t hour, uint8_t minutes, uint8_t seconds)
 {
     return ( hour < 24u ) && ( minutes < 60u ) && ( seconds < 60u );
-}
-
-
-/**
- * @brief   Function to evaluate the time parameters of a message.
- * 
- * This function receive the memmory address of a read message and uses the MACRO BCD_TO_BIN
- * to convert the message parameter and then evaluate if are valid, in true case save the time
- * in the tm_msg struct and return OK state, in false case just return ERRROR_ state.  
- * 
- * @param   msg [in] is the message with time parameters.
- * 
- * @retval  return the next state, it can be OK and ERROR_
- * 
-*/
-STATIC void Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr )
-{   
-    SerialMsgPtr->bytes[MSG] = SERIAL_MSG_ERROR;
-
-    uint8_t hour    = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_1 ] );     /*time parameter 1*/
-    uint8_t minutes = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_2 ] );     /*time parameter 2*/
-    uint8_t seconds = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_3 ] );     /*time parameter 3*/
-    
-    if ( Validate_Time( hour, minutes, seconds ) == TRUE )
-    {
-        SerialMsgPtr->bytes[MSG] = SERIAL_MSG_OK;
-        ClkMsg.msg        = SERIAL_MSG_TIME;
-        ClkMsg.tm.tm_hour = hour;
-        ClkMsg.tm.tm_min  = minutes;
-        ClkMsg.tm.tm_sec  = seconds;
-    }
-
-    (void) HIL_QUEUE_writeDataISR( &queue, SerialMsgPtr );
-
-}
-
-/**
- * @brief   Function to evaluate the date parameters of a message.
- * 
- * This function receive the memmory address of a read message and uses the MACRO BCD_TO_BIN
- * to convert the message parameter and then evaluate if are valid, in true case save the time
- * in the tm_msg struct and return OK state, in false case just return ERRROR_ state.  
- * 
- * @param   msg [in] is the message with date parameters.
- * 
- * @retval  return the next state, it can be OK and ERROR_
- * 
-*/
-STATIC void Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr )
-{
-    SerialMsgPtr->bytes[MSG] = SERIAL_MSG_ERROR;
-
-    uint8_t day   = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_1 ] );           /*date parameter 1*/
-    uint8_t month = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_2 ] );           /*date parameter 2*/
-    uint16_t year = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_3 ] ) * 100u;     /*param 3 * 100 to get two most significant figures of the year */
-    year += BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_4 ] );                   /*add param 4 */
-    
-    if( Validate_Date( day, month, year ) == TRUE )
-    {
-        SerialMsgPtr->bytes[MSG] = SERIAL_MSG_OK;
-        ClkMsg.msg        = SERIAL_MSG_DATE;
-        ClkMsg.tm.tm_mday = day;
-        ClkMsg.tm.tm_mon  = month;
-        ClkMsg.tm.tm_year = year;
-        ClkMsg.tm.tm_wday = WeekDay( day, month, year );
-    }
-
-    (void) HIL_QUEUE_writeDataISR( &queue, SerialMsgPtr );
-
-}
-
-/**
- * @brief   Function to evaluate the alarm parameters of a message.
- * 
- * This function receive the memmory address of a read message and uses the MACRO BCD_TO_BIN
- * to convert the message parameters and then evaluate if are valid, in true case save the time
- * in the tm_msg struct and return OK state, in false case just return ERRROR_ state.  
- * 
- * @param   msg [in] is the message with date parameters.
- * 
- * @retval  return the next state, it can be OK and ERROR_
- * 
-*/
-STATIC void Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr )
-{
-    SerialMsgPtr->bytes[MSG] = SERIAL_MSG_ERROR;
-
-    uint8_t hour    = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_1 ] );     /*Alarm parameter 1*/
-    uint8_t minutes = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_2 ] );     /*Alarm parameter 2*/
-
-    if ( Validate_Time( hour, minutes, VALID_SECONDS_PARAM ) == TRUE )
-    {
-        SerialMsgPtr->bytes[MSG] = SERIAL_MSG_OK;
-        ClkMsg.msg = SERIAL_MSG_ALARM;
-    }
-
-    (void) HIL_QUEUE_writeDataISR( &queue, SerialMsgPtr );
-}
-
-/**
- * @brief   Function to send a "OK" message.
- * 
- * This function define an array and append to it in the parameter 1 the OK message that is a value
- * of 0x55 and uses the Serial_SingleFrameTx to pack it in the CAN-TP format, this msg is sent with
- * the RESPONSE_ID (0x122).  
- * 
- * 
-*/
-STATIC void Send_Ok_Message( APP_CanTypeDef *SerialMsgPtr )
-{
-    (void) SerialMsgPtr;
-    uint8_t data[ N_BYTES_CAN_MSG ] = {0};
-    data[ PARAMETER_1 ] = OK_RESPONSE;
-
-    Serial_SingleFrameTx( data, N_BYTES_RESPONSE );
-
-    HAL_FDCAN_AddMessageToTxFifoQ( &CANHandler, &CANTxHeader, data );
-}
-
-/**
- * @brief   Function to send an "ERROR" message.
- * 
- * This function define an array and append to it in the parameter 1 the ERROR message that is a value
- * of 0xAA and uses the Serial_SingleFrameTx to pack it in the CAN-TP format, this msg is sent with
- * the RESPONSE_ID (0x122).  
- * 
- * 
-*/
-STATIC void Send_Error_Message( APP_CanTypeDef *SerialMsgPtr )
-{ 
-    (void) SerialMsgPtr;
-    uint8_t data[ N_BYTES_CAN_MSG ] = {0};
-    data[ PARAMETER_1 ] = ERROR_RESPONSE;
-
-    Serial_SingleFrameTx( data, N_BYTES_RESPONSE );
-
-    HAL_FDCAN_AddMessageToTxFifoQ( &CANHandler, &CANTxHeader, data );
 }

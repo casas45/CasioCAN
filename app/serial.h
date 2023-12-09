@@ -40,22 +40,6 @@
 #define MS_NIBBLE_MASK      0xF0u       /*!< Mask to obtain most significant nibble of a byte*/
 #define LS_NIBBLE_MASK      0x0Fu       /*!< Mask to obtain low significant nibble of a byte*/
 
-/**
- * @enum APP_state
- * 
- * @brief enum to list the states of the machine
- * 
-*/
-typedef enum _App_state
-{
-    IDLE = 0,       /*!< IDLE state (0) */ 
-    MESSAGE,        /*!< MESSAGE state (1) */ 
-    TIME,           /*!< TIME state (2) */ 
-    DATE,           /*!< DATE state (3) */ 
-    ALARM,          /*!< ALARM state (4) */ 
-    OK,             /*!< OK state (5) */ 
-    ERROR_          /*!< ERROR_ state (6) */ 
-} APP_state;
 
 void Serial_InitTask( void );
 
