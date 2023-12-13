@@ -12,10 +12,12 @@
 #include "scheduler.h"
 #include "queue.h"
 
+/**
+ * @brief   Variable with external linkage that is used to configure interrupt in ints.c file.
+*/
 extern FDCAN_HandleTypeDef CANHandler;
 
 /**
- * @enum    APP_Messages
  * @brief   List of messages types.
 */
 typedef enum {
@@ -28,7 +30,6 @@ typedef enum {
 } APP_Messages;
 
 /**
- * @struct  APP_TmTypeDef
  * @brief   struct to save time and date.
 */
 typedef struct _APP_TmTypeDef
@@ -43,7 +44,6 @@ typedef struct _APP_TmTypeDef
 } APP_TmTypeDef;
 
 /**
- * @struct  APP_MsgTypeDef
  * @brief   Struct to place the information once is processed and accepted.
 */
 typedef struct _APP_MsgTypeDef
@@ -53,7 +53,6 @@ typedef struct _APP_MsgTypeDef
 } APP_MsgTypeDef;
 
 /**
- * @struct  APP_CanTypeDef
  * @brief   Struct to pass messages from CAN interrupt to SerialTask through queue.
 */
 typedef struct _App_CanTypeDef

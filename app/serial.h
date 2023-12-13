@@ -7,7 +7,7 @@
 #define SERIAL_H__
 
 #ifndef UTEST
-#define STATIC static
+#define STATIC static       /*!< Macro to remove static keyword only for unit tests */
 #else
 #define STATIC
 #endif

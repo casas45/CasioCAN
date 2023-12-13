@@ -1,6 +1,6 @@
 /**
  * @file    queue.c
- * @brief   Queue to handle any type of data.
+ * @brief   Implementation of queue algorithm to handle any type of data.
  *
  * This queue make a copy of the elements to be written and always make a copy of the elements read, 
  * the interface contain fuctions to initialize the queue, write data, read data, to know if the
@@ -11,9 +11,6 @@
 #include <string.h>
 #include "queue.h"
 #include "bsp.h"
-
-#define FALSE   0u       /*!< Replace the word FALSE with 0 */
-#define TRUE    1u       /*!< Replace the word TRUE with 1 */
 
 
 /**
@@ -47,8 +44,8 @@ void AppQueue_initQueue( AppQue_Queue *queue )
  *
  * @retval  Return the success of the write action, TRUE if the data was written, and FALSE in case the
  * queue is Full.
- *
  */
+/* cppcheck-suppress misra-c2012-8.7 ; this function can be used externally later in this project*/
 unsigned char AppQueue_writeData( AppQue_Queue *queue, const void *data )
 {   
     unsigned char varRet = FALSE;
@@ -89,8 +86,8 @@ unsigned char AppQueue_writeData( AppQue_Queue *queue, const void *data )
  *
  * @retval  Return the success of the read action, TRUE if the data was read, and FALSE in case the
  * queue is Empty.
- *
  */
+/* cppcheck-suppress misra-c2012-8.7 ; this function can be used externally later in this project*/
 unsigned char AppQueue_readData( AppQue_Queue *queue, void *data )
 {
     unsigned char varRet = FALSE;
@@ -129,8 +126,8 @@ unsigned char AppQueue_readData( AppQue_Queue *queue, void *data )
  *
  * @retval  Return the actual value of the flag Empty, TRUE when the queue is empty, and FALSE when
  * the queue has at least one element.
- *
  */
+/* cppcheck-suppress misra-c2012-8.7 ; this function can be used externally later in this project*/
 unsigned char AppQueue_isQueueEmpty( const AppQue_Queue *queue )
 {
     return queue->Empty;
@@ -142,10 +139,9 @@ unsigned char AppQueue_isQueueEmpty( const AppQue_Queue *queue )
  * Reset the elements Tail and Head to zero, and the flags Empty and Full to TRUE and FALSE,
  * respectively, this causes the information contained in the queue to be discarded.
  * 
- * 
  * @param   queue [in] It's the memory address of the queue to access the elements.
- *
  */
+/* cppcheck-suppress misra-c2012-8.7 ; this function can be used externally later in this project*/
 void AppQueue_flushQueue( AppQue_Queue *queue )
 {
     queue->Head = 0;      //Setting index Tail and Head to zero
@@ -169,7 +165,6 @@ void AppQueue_flushQueue( AppQue_Queue *queue )
  *
  * @retval  Return the success of the write action, TRUE if the data was written, and FALSE in case the
  * queue is Full.
- *
  */
 unsigned char HIL_QUEUE_writeDataISR( AppQue_Queue *queue, const void *data )
 {   
@@ -195,7 +190,6 @@ unsigned char HIL_QUEUE_writeDataISR( AppQue_Queue *queue, const void *data )
  *
  * @retval  Return the success of the read action, TRUE if the data was read, and FALSE in case the
  * queue is Empty.
- *
  */
 unsigned char HIL_QUEUE_readDataISR( AppQue_Queue *queue, void *data )
 {
@@ -219,7 +213,6 @@ unsigned char HIL_QUEUE_readDataISR( AppQue_Queue *queue, void *data )
  *
  * @retval  Return the actual value of the flag Empty, TRUE when the queue is empty, and FALSE when
  * the queue has at least one element.
- *
  */
 unsigned char HIL_QUEUE_isQueueEmptyISR( const AppQue_Queue *queue )
 {
@@ -234,9 +227,7 @@ unsigned char HIL_QUEUE_isQueueEmptyISR( const AppQue_Queue *queue )
  * This function disable the all Interrupts at the beggining and enable them when the task has been 
  * completed.
  * 
- * 
  * @param   queue [in] It's the memory address of the queue to access the elements.
- *
  */
 void HIL_QUEUE_flushQueueISR( AppQue_Queue *queue )
 {

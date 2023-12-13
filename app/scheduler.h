@@ -8,19 +8,22 @@
 #define SCHEDULER_H_
 
 #ifndef TEST_L
-#define FOREVER()1
-#else
+#define FOREVER() 1             /*!< MACRO defined with test purposes */  
+#else 
 extern unsigned char numLoops;
 #define FOREVER() numLoops--
 #endif
 
-#define TRUE    1u
-#define FALSE   0u
+/** 
+  * @defgroup BooleanValues This define are used to avoid magical nmumbers 0 and 1
+  @{ */
+#define TRUE    1u      /*!< Boolean value TRUE (1) */
+#define FALSE   0u      /*!< Boolean value FALSE (0) */
+/**
+  @} */
 
 /**
- * @struct AppSched_Task
- * 
- * This struct is the task control block (TCB).
+ * @brief This struct is the task control block (TCB).
 */
 typedef struct _task
 {
@@ -32,9 +35,7 @@ typedef struct _task
 }AppSched_Task;
 
 /**
- * @struct AppSched_Timer
- * 
- * Struct to control the software timers.
+ * @brief Struct to control the software timers.
 */
 typedef struct _AppSched_Timer
 {
@@ -45,9 +46,7 @@ typedef struct _AppSched_Timer
 } AppSched_Timer;
 
 /**
- * @struct AppSched_Scheduler
- * 
- * Struct to control the scheduler.
+ * @brief Struct to control the scheduler.
 */
 typedef struct _scheduler
 {

@@ -12,9 +12,9 @@
  */
 #include "bsp.h"
 
-#define TASKS_N         1u
-#define TICK_VAL        5u
-#define PERIOD_SERIAL_TASK  10u
+#define TASKS_N         1u          /*!< Number of tasks registered in the scheduler */
+#define TICK_VAL        5u          /*!< Tick value to scheduler */
+#define PERIOD_SERIAL_TASK  10u     /*!< Serial task periodicity */
 
 /**
  * @brief   **Application entry point**

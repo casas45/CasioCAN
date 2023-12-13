@@ -12,8 +12,6 @@
 #include <stddef.h>
 #include "bsp.h"
 
-
-
 /**
  * @brief   Interface to initialize the scheduler.
  *
@@ -40,10 +38,10 @@ void AppSched_initScheduler( AppSched_Scheduler *scheduler)
  * periodicity, the period is assigned to the eleapsed time, so the tasks will be run just after start the
  * scheduler, and also set the runTask flag to TRUE, finally increment the taskCount by one to return it.
  *
- * @param   scheduler[in] It's the memory address of the scheduler to access the elements.
- * @param   initPtr[in] Memory address of the init function, it could be NULL.
- * @param   taskPtr[in] Memory address of the function to run periodically.
- * @param   period[in] The periodicity with wich the task will be run.
+ * @param   scheduler [in] It's the memory address of the scheduler to access the elements.
+ * @param   initPtr [in] Memory address of the init function, it could be NULL.
+ * @param   taskPtr [in] Memory address of the function to run periodically.
+ * @param   period [in] The periodicity with wich the task will be run.
  *
  * @retval  Returns the taskID if the task has been registered succesfully, and returns a zero if not.
  * 
@@ -70,19 +68,15 @@ unsigned char AppSched_registerTask( AppSched_Scheduler *scheduler, void (*initP
 }
 
 /**
- * @brief   Stop a task that was previously registered.
+ * @brief   Stops a task in the scheduler.
  * 
- * To know if the argument task is a valid taskID the function verify if it's in the range bettwen 
- * 1 and the tasksCount, in a TRUE case set the runTask flag to FALSE doing an offset to the position
- * in the TCB block to access the right task.
+ * This function stops the execution of a specific task in the provided scheduler
+ * by setting the task's runTask flag to FALSE.
  * 
- * @param   scheduler[in] It's the memory address of the scheduler to access the elements.
- * @param   task[in] the taskID of the task to stop.
+ * @param   scheduler [in] Pointer to the scheduler structure. 
+ * @param   task [in] the taskID of the task to stop.
  * 
- * 
- * @retval  Return the success of the action, TRUE is the task was stopped and FALSE if was not.
- * 
- * 
+ * @retval  Return the success of the action, TRUE is the task was stopped, FALSE otherwise.
 */
 unsigned char AppSched_stopTask( AppSched_Scheduler *scheduler, unsigned char task )
 {
@@ -104,8 +98,8 @@ unsigned char AppSched_stopTask( AppSched_Scheduler *scheduler, unsigned char ta
  * 1 and the tasksCount, in a TRUE case set the runTask flag to FALSE doing an offset to the position
  * in the TCB block to access the right task.
  * 
- * @param   scheduler[in] It's the memory address of the scheduler to access the elements.
- * @param   task[in] the taskID of the task to stop.
+ * @param   scheduler [in] It's the memory address of the scheduler to access the elements.
+ * @param   task [in] the taskID of the task to stop.
  * 
  * 
  * @retval  Return the success of the action, TRUE is the task was stopped and FALSE if was not.
@@ -132,9 +126,9 @@ unsigned char AppSched_startTask( AppSched_Scheduler *scheduler, unsigned char t
  * the timeout and it's a tick multiple, in a TRUE case just set the new value to the period element
  * of the TCB in the right position.
  * 
- * @param   scheduler[in] Memory address of the scheduler to access the elements.
- * @param   task[in] the taskID of the task to change the period.
- * @param   period[in] the new period of the task.
+ * @param   scheduler [in] Memory address of the scheduler to access the elements.
+ * @param   task [in] the taskID of the task to change the period.
+ * @param   period [in] the new period of the task.
  * 
  * @retval  Return the action success, TRUE if it's a valid taskID and period, and false if not. 
 */
@@ -159,7 +153,7 @@ unsigned char AppSched_periodTask( AppSched_Scheduler *scheduler, unsigned char 
  * miliseconds. In the cycle every time a tick happens check all the tasks and timers to know if it's
  * time to run the corresponding function.
  * 
- * @param scheduler[in] Memory address of the scheduler to access the elements.
+ * @param scheduler [in] Memory address of the scheduler to access the elements.
  * 
  * 
  * @note 
@@ -227,9 +221,9 @@ void AppSched_startScheduler( AppSched_Scheduler *scheduler )
  * timeout is assigned to the actual count, and the startFlag is set FALSE and the timersCount increment by
  * one.
  * 
- * @param   scheduler[in] Memory address of the scheduler to access the elements.
- * @param   timeout[in] Timer timeout to decrement. 
- * @param   callbackPtr[in] Memory address of the function to be run when the count down to zero.
+ * @param   scheduler [in] Memory address of the scheduler to access the elements.
+ * @param   timeout [in] Timer timeout to decrement. 
+ * @param   callbackPtr [in] Memory address of the function to be run when the count down to zero.
  * 
  * @retval  Returns the timerID if the timer has been registered succesfully, and returns a zero if not.
 */
@@ -257,12 +251,13 @@ unsigned char AppSched_registerTimer( AppSched_Scheduler *scheduler, unsigned lo
  * is valid, it means that is in the range between 1 and the actual timersCount value, if it's valid use an
  * auxiliary variable to return the count of the respective timer, if the timerID doesn't exist returns 0. 
  * 
- * @param   scheduler[in] Memory address of the scheduler to access the elements.
- * @param   timer[in] the timerID of the timer to get the count.
+ * @param   scheduler [in] Memory address of the scheduler to access the elements.
+ * @param   timer [in] the timerID of the timer to get the count.
  * 
  * @retval  Returns the actual count of the timer if the timerID is valid, if not returns zero.
  * 
 */
+/* cppcheck-suppress misra-c2012-8.7 ; this function can be used externally later in this project*/
 unsigned long AppSched_getTimer( AppSched_Scheduler *scheduler, unsigned char timer )
 {
     unsigned long retGtimer = 0;
@@ -283,13 +278,12 @@ unsigned long AppSched_getTimer( AppSched_Scheduler *scheduler, unsigned char ti
  * the startFlag to TRUE, in the FALSE case the function just return a zero.
  * 
  * 
- * @param   scheduler[in] Memory address of the scheduler to access the elements.
- * @param   timer[in] the timerID of the timer to get the count.
- * @param   timeout[in] the new value of the timer timeout.
+ * @param   scheduler [in] Memory address of the scheduler to access the elements.
+ * @param   timer [in] the timerID of the timer to get the count.
+ * @param   timeout [in] the new value of the timer timeout.
  * 
  * @retval  Returns the success of the the function, TRUE when a new timeout was set and FALSE when not.
 */
-
 unsigned char AppSched_reloadTimer( AppSched_Scheduler *scheduler, unsigned char timer, unsigned long timeout )
 {
     unsigned char varRetReload = FALSE;
@@ -311,15 +305,14 @@ unsigned char AppSched_reloadTimer( AppSched_Scheduler *scheduler, unsigned char
  * To start the timer first check if the timerID is valid, if it is then set the value of the timeout
  * to the actual count and set the startFlag to TRUE, and if the timer doesn't exist it returns FALSE.
  * 
- * @param   scheduler[in] Memory address of the scheduler to access the elements.
- * @param   timer[in] the timerID of the timer to start.
+ * @param   scheduler [in] Memory address of the scheduler to access the elements.
+ * @param   timer [in] the timerID of the timer to start.
  * 
  * @retval  Returns the success, TRUE if the timer was started and FALSE if the timer don't exist.
  * 
  * 
  * @note    This function is also used to restart the timer, using it in the callback function.
 */
-
 unsigned char AppSched_startTimer( AppSched_Scheduler *scheduler, unsigned char timer )
 {
     unsigned char retStart = FALSE;
@@ -340,8 +333,8 @@ unsigned char AppSched_startTimer( AppSched_Scheduler *scheduler, unsigned char 
  * This function is used to set the startFlag to FALSE, it first check for the existence of the timer, if exists
  * it sets the flag and if not, it returns FALSE.
  * 
- * @param   scheduler[in] Memory address of the scheduler to access the elements.
- * @param   timer[in] the timerID of the timer to stop.
+ * @param   scheduler [in] Memory address of the scheduler to access the elements.
+ * @param   timer [in] the timerID of the timer to stop.
  * 
  * @retval  Returns the success, TRUE if the timer was stopped and FALSE if the timer don't exist.
  * 

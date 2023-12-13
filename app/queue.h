@@ -7,10 +7,18 @@
 #ifndef QUEUE_H_
 #define QUEUE_H_
 
+/** 
+  * @defgroup BooleanValues This define are used to avoid magical nmumbers 0 and 1
+  @{ */
+#define TRUE    1u      /*!< Boolean value TRUE (1) */
+#define FALSE   0u      /*!< Boolean value FALSE (0) */
+/**
+  @} */
+
 /**
  * @struct AppQue_Queue
  * 
- * Struct with the essential elements to work with a queue.
+ * @brief Struct with the essential elements to work with a queue.
  * 
 */
 typedef struct

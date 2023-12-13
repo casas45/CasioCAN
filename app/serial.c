@@ -12,14 +12,24 @@
 
 #define BCD_TO_BIN( x ) ( ( ( (x) >> 4u ) * 10u ) + ( (x) & 0x0Fu ) ) /*!< Macro to conver BCD data to an integer */
 
-/*structure fort CAN initialization*/
+/**
+ * @brief   Structure fort CAN initialization.
+*/
 FDCAN_HandleTypeDef CANHandler;
 
-/*CAN header structure*/
+/**
+ * @brief   CAN header structure.
+*/
 static FDCAN_TxHeaderTypeDef CANTxHeader;
 
+/**
+ * @brief   Struct to place the information that will be passed to the Clk.
+*/
 static APP_MsgTypeDef ClkMsg;
 
+/**
+ * @brief   Queue to manage the event machine.
+*/
 static AppQue_Queue queue;
 
 
@@ -147,47 +157,39 @@ void Serial_PeriodicTask( void )
  * 
  * @param   hfdcan [in] is the FDCAN init structure.
  * @param   TxEventFifoITs [in] is the interrupt by which the function is called.
- * 
- * @retval None
 */
-
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is in HAL library*/
 void HAL_FDCAN_RxFifo0Callback( FDCAN_HandleTypeDef *hfdcan, uint32_t TxEventFifoITs )
 {
-    if ( TxEventFifoITs == FDCAN_IT_RX_FIFO0_NEW_MESSAGE )
+    (void) TxEventFifoITs;
+
+    APP_CanTypeDef MsgCAN;
+    /*structure CAN Rx Header*/
+    FDCAN_RxHeaderTypeDef CANRxHeader;
+    /*get the msg from fifo0*/
+    HAL_FDCAN_GetRxMessage( hfdcan, FDCAN_RX_FIFO0, &CANRxHeader, MsgCAN.bytes );
+    /*evaluate if its a valid CAN-TP single frame*/
+    if ( Serial_SingleFrameRx( MsgCAN.bytes, &MsgCAN.lenght ) == TRUE )     
     {
-        APP_CanTypeDef MsgCAN;
-        /*structure CAN Rx Header*/
-        FDCAN_RxHeaderTypeDef CANRxHeader;
-
-        /*get the msg from fifo0*/
-        HAL_FDCAN_GetRxMessage( hfdcan, FDCAN_RX_FIFO0, &CANRxHeader, MsgCAN.bytes );
-
-        /*evaluate if its a valid CAN-TP single frame*/
-        if ( Serial_SingleFrameRx( MsgCAN.bytes, &MsgCAN.lenght ) == TRUE )     
+        MsgCAN.id = CANRxHeader.Identifier;                   /*get msg ID*/
+        switch( MsgCAN.id )
         {
-            MsgCAN.id = CANRxHeader.Identifier;                   /*get msg ID*/
-
-            switch( MsgCAN.id )
-            {
-                case ID_TIME_MSG:
-                    MsgCAN.bytes[MSG] = SERIAL_MSG_TIME;
-                    break;
-                
-                case ID_DATE_MSG:
-                    MsgCAN.bytes[MSG] = SERIAL_MSG_DATE;
-                    break;
-                
-                case ID_ALARM_MSG:
-                    MsgCAN.bytes[MSG] = SERIAL_MSG_ALARM;
-                    break;
-                
-                default:
-                    break;
-            }
-
-            (void) HIL_QUEUE_writeDataISR( &queue, &MsgCAN );     /*add msg to queue*/
+            case ID_TIME_MSG:
+                MsgCAN.bytes[MSG] = SERIAL_MSG_TIME;
+                break;
+            
+            case ID_DATE_MSG:
+                MsgCAN.bytes[MSG] = SERIAL_MSG_DATE;
+                break;
+            
+            case ID_ALARM_MSG:
+                MsgCAN.bytes[MSG] = SERIAL_MSG_ALARM;
+                break;
+            
+            default:
+                break;
         }
+        (void) HIL_QUEUE_writeDataISR( &queue, &MsgCAN );     /*add msg to queue*/
     }
 }
 
@@ -261,13 +263,14 @@ STATIC uint8_t Serial_SingleFrameRx( uint8_t *data, uint8_t *size)
  * 
  * @param   SerialMsgPtr [in] is the message with time parameters.
  * 
- * 
+ * @retval  Return the event type that was writed in the queue, it can be Error or Ok.
 */
 STATIC APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr )
 {   
+    APP_CanTypeDef SerialMsg;
     APP_Messages eventRet = SERIAL_MSG_ERROR;
 
-    SerialMsgPtr->bytes[MSG] = SERIAL_MSG_ERROR;
+    SerialMsg.bytes[MSG] = SERIAL_MSG_ERROR;
 
     uint8_t hour    = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_1 ] );     /*time parameter 1*/
     uint8_t minutes = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_2 ] );     /*time parameter 2*/
@@ -276,14 +279,14 @@ STATIC APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr )
     if ( Validate_Time( hour, minutes, seconds ) == TRUE )
     {
         eventRet = SERIAL_MSG_OK;
-        SerialMsgPtr->bytes[MSG] = SERIAL_MSG_OK;
+        SerialMsg.bytes[MSG] = SERIAL_MSG_OK;
         ClkMsg.msg        = SERIAL_MSG_TIME;
         ClkMsg.tm.tm_hour = hour;
         ClkMsg.tm.tm_min  = minutes;
         ClkMsg.tm.tm_sec  = seconds;
     }
 
-    (void) HIL_QUEUE_writeDataISR( &queue, SerialMsgPtr );
+    (void) HIL_QUEUE_writeDataISR( &queue, &SerialMsg );
 
     return eventRet;
 }
@@ -297,13 +300,14 @@ STATIC APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr )
  * 
  * @param   SerialMsgPtr [in] is the message with date parameters.
  * 
- * 
+ * @retval  Return the event type that was writed in the queue, it can be Error or Ok.
 */
 STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr )
 {
+    APP_CanTypeDef SerialMsg;
     APP_Messages eventRet = SERIAL_MSG_ERROR;
 
-    SerialMsgPtr->bytes[MSG] = SERIAL_MSG_ERROR;
+    SerialMsg.bytes[MSG] = SERIAL_MSG_ERROR;
 
     uint8_t day   = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_1 ] );           /*date parameter 1*/
     uint8_t month = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_2 ] );           /*date parameter 2*/
@@ -313,7 +317,7 @@ STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr )
     if( Validate_Date( day, month, year ) == TRUE )
     {
         eventRet = SERIAL_MSG_OK;
-        SerialMsgPtr->bytes[MSG] = SERIAL_MSG_OK;
+        SerialMsg.bytes[MSG] = SERIAL_MSG_OK;
         ClkMsg.msg        = SERIAL_MSG_DATE;
         ClkMsg.tm.tm_mday = day;
         ClkMsg.tm.tm_mon  = month;
@@ -321,7 +325,7 @@ STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr )
         ClkMsg.tm.tm_wday = WeekDay( day, month, year );
     }
 
-    (void) HIL_QUEUE_writeDataISR( &queue, SerialMsgPtr );
+    (void) HIL_QUEUE_writeDataISR( &queue, &SerialMsg );
 
     return eventRet;
 }
@@ -334,12 +338,15 @@ STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr )
  * in the ClkMsg struct and change the type of msg to SERIAL_MSG_OK.  
  * 
  * @param   SerialMsgPtr [in] is the message with alarm parameters.
+ * 
+ * @retval  Return the event type that was writed in the queue, Error or Ok.
 */
 STATIC APP_Messages Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr )
 {
+    APP_CanTypeDef SerialMsg;
     APP_Messages eventRet = SERIAL_MSG_ERROR;
 
-    SerialMsgPtr->bytes[MSG] = SERIAL_MSG_ERROR;
+    SerialMsg.bytes[MSG] = SERIAL_MSG_ERROR;
 
     uint8_t hour    = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_1 ] );     /*Alarm parameter 1*/
     uint8_t minutes = BCD_TO_BIN( SerialMsgPtr->bytes[ PARAMETER_2 ] );     /*Alarm parameter 2*/
@@ -347,11 +354,11 @@ STATIC APP_Messages Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr )
     if ( Validate_Time( hour, minutes, VALID_SECONDS_PARAM ) == TRUE )
     {
         eventRet = SERIAL_MSG_OK;
-        SerialMsgPtr->bytes[MSG] = SERIAL_MSG_OK;
+        SerialMsg.bytes[MSG] = SERIAL_MSG_OK;
         ClkMsg.msg = SERIAL_MSG_ALARM;
     }
 
-    (void) HIL_QUEUE_writeDataISR( &queue, SerialMsgPtr );
+    (void) HIL_QUEUE_writeDataISR( &queue, &SerialMsg );
 
     return eventRet;
 }
@@ -362,8 +369,10 @@ STATIC APP_Messages Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr )
  * This function define an array and append to it in the parameter 1 the OK message that is a value
  * of 0x55 and uses the Serial_SingleFrameTx to pack it in the CAN-TP format, this msg is sent with
  * the RESPONSE_ID (0x122).  
+ *  
+ * @param   SerialMsgPtr [in] this parameter isn't used here.
  * 
- * 
+ * @retval  Return the event type that was writed in the queue (None).
 */
 STATIC APP_Messages Send_Ok_Message( APP_CanTypeDef *SerialMsgPtr )
 {
@@ -386,6 +395,10 @@ STATIC APP_Messages Send_Ok_Message( APP_CanTypeDef *SerialMsgPtr )
  * This function define an array and append to it in the parameter 1 the ERROR message that is a value
  * of 0xAA and uses the Serial_SingleFrameTx to pack it in the CAN-TP format, this msg is sent with
  * the RESPONSE_ID (0x122).  
+ * 
+ * @param   SerialMsgPtr [in] this parameter isn't used here.
+ * 
+ * @retval  Return the event type that was writed in the queue (None).
 */
 STATIC APP_Messages Send_Error_Message( APP_CanTypeDef *SerialMsgPtr )
 { 
@@ -406,7 +419,7 @@ STATIC APP_Messages Send_Error_Message( APP_CanTypeDef *SerialMsgPtr )
 /**
  * @brief   Function to check if the year is leap or not.
  * 
- * @param   year[in] year value to be check.
+ * @param   year [in] year value to be check.
  * 
  * @retval  TRUE if its a leap year and FALSE if not. 
 */
@@ -426,8 +439,7 @@ STATIC uint8_t Validate_LeapYear( uint16_t year )
  * @param   month [in] month value to be check.
  * @param   year [in] year value to be check.
  * 
- * 
- * @retval  Returns TRUE when its a valid date and FALSE when it is not;
+ * @retval  Returns TRUE when its a valid date and FALSE when it is not.
 */
 STATIC uint8_t Validate_Date( uint8_t days, uint8_t month, uint16_t year )
 {
@@ -455,9 +467,9 @@ STATIC uint8_t Validate_Date( uint8_t days, uint8_t month, uint16_t year )
  * 
  * Using an algorithm to calcute the day of the week with a date.
  * 
- * @param   days[in] day value.
- * @param   month[in] month.
- * @param   year[in] year value.
+ * @param   days [in] day value.
+ * @param   month [in] month.
+ * @param   year [in] year value.
  * 
  * @retval  Return the week day (0 to 6 -> Sunday to Monday).
 */
@@ -495,12 +507,11 @@ STATIC uint8_t WeekDay( uint8_t days, uint8_t month, uint16_t year ){
  * This function returns the result of verifying that the hour is less than 24, the minutes less than 60
  * and the seconds less than 60.
  * 
- * @param   hour[in] hour value to be check.
- * @param   minutes[in] minutes value to be check.
- * @param   seconds[in] seconds value to be check.
+ * @param   hour [in] hour value to be check.
+ * @param   minutes [in] minutes value to be check.
+ * @param   seconds [in] seconds value to be check.
  * 
- * 
- * @retval  Returns TRUE when its a valid time and FALSE if it is not;
+ * @retval  Returns TRUE when its a valid time and FALSE if it is not.
 */
 STATIC uint8_t Validate_Time (uint8_t hour, uint8_t minutes, uint8_t seconds)
 {
