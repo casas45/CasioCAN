@@ -12,7 +12,7 @@
 #define TICK_VAL        5u          /*!< Tick value to scheduler */
 #define PERIOD_SERIAL_TASK  10u     /*!< Serial task periodicity */
 
-static AppSched_Scheduler Scheduler;
+
 
 
 /**
@@ -28,6 +28,7 @@ int main( void )
 {
     HAL_Init( );
 
+    static AppSched_Scheduler Scheduler;
     static AppSched_Task tasks[ TASKS_N ];
     
     /*Scheduler config*/
