@@ -1,14 +1,10 @@
 /**
  * @file    main.c
- * @brief   **Template Application entry point**
+ * @brief   main file where the scheduler is configured and run.
  *
- * The main file is the entry point of the application or any user code, please provide the
- * proper description of this file according to your own implementation
- * This Demo app only blinks an LED connected to PortA Pin 5
+ * In this file is the configuration of the scheduler to manage the tasks that handle message
+ * processing and clock updates.  
  *
- * @note    Only the files inside folder app will be take them into account when the
- *          doxygen runs by typing "make docs", index page is generated in
- *          Build/doxigen/html/index.html
  */
 #include "bsp.h"
 
@@ -16,11 +12,15 @@
 #define TICK_VAL        5u          /*!< Tick value to scheduler */
 #define PERIOD_SERIAL_TASK  10u     /*!< Serial task periodicity */
 
+static AppSched_Scheduler Scheduler;
+
+
 /**
  * @brief   **Application entry point**
  *
- * Ptovide the proper description for function main according to your own
- * implementation
+ * This function is the application entry point. It initializes the HAL library and configure the
+ * scheduler, the tasks in charge of message processing and clock are registered with their periodicity
+ * and starts the same scheduler.
  *
  * @retval  None
  */
@@ -29,7 +29,6 @@ int main( void )
     HAL_Init( );
 
     static AppSched_Task tasks[ TASKS_N ];
-    static AppSched_Scheduler Scheduler;
     
     /*Scheduler config*/
     Scheduler.tick      = TICK_VAL;
@@ -38,7 +37,7 @@ int main( void )
     AppSched_initScheduler( &Scheduler );
     /*Register serial task*/
     (void) AppSched_registerTask( &Scheduler, Serial_InitTask, Serial_PeriodicTask, PERIOD_SERIAL_TASK );
-
+    
     AppSched_startScheduler( &Scheduler );
 
 

@@ -26,6 +26,7 @@ typedef enum {
     SERIAL_MSG_ALARM,       /*!< Msg type alarm */
     SERIAL_MSG_OK,          /*!< Msg type ok */
     SERIAL_MSG_ERROR,       /*!< Msg type error */
+    SERIAL_N_EVENTS,        /*!< Number of events */
     SERIAL_MSG_NONE         /*!< Msg type none */
 } APP_Messages;
 

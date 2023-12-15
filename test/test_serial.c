@@ -88,8 +88,9 @@ void test__Serial_InitTask__init_FDCAN_module( void )
 /**
  * @brief   Test for serial periodic task, mock read queue with time msg.
  * 
- * In this function it is only necessary check if all lines are executed, to do that mock functions
- * HIL_QUEUE_isQueueEmptyISR and HIL_QUEUE_writeDataISR to simulate a queue with a time message.
+ * In this function it is necessary check if the msg have a valid event index, to do that mock 
+ * functions HIL_QUEUE_isQueueEmptyISR and HIL_QUEUE_writeDataISR to simulate a queue with a 
+ * time message.
 */
 void test__Serial_PeriodicTask__queue_with_time_msg( void )
 {
@@ -103,6 +104,29 @@ void test__Serial_PeriodicTask__queue_with_time_msg( void )
     HIL_QUEUE_readDataISR_ReturnMemThruPtr_data( &SerialMsg, sizeof( APP_CanTypeDef ) );
 
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
+
+    HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
+
+    Serial_PeriodicTask( );
+}
+
+/**
+ * @brief   Test for serial periodic task, mock read queue with none msg.
+ * 
+ * In this function it is necessary check if the msg have a valid event index, to do that mock 
+ * functions HIL_QUEUE_isQueueEmptyISR  to simulate a queue with a message with a event index
+ * of 6 (SERIAL_MSG_NONE).
+*/
+void test__Serial_PeriodicTask__queue_with_none_msg( void )
+{
+    APP_CanTypeDef SerialMsg;
+    dataTime[MSG] = SERIAL_MSG_NONE;
+    memcpy( SerialMsg.bytes, &dataTime, BYTES_CAN_MESSAGE );
+
+    HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( FALSE );
+
+    HIL_QUEUE_readDataISR_ExpectAnyArgsAndReturn( TRUE );
+    HIL_QUEUE_readDataISR_ReturnMemThruPtr_data( &SerialMsg, sizeof( APP_CanTypeDef ) );
 
     HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
 

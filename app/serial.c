@@ -123,14 +123,14 @@ void Serial_InitTask( void )
 }
 
 /**
- * @brief Interface to implement state machine.
+ * @brief Interface to implement serial event machine.
  * 
- * The event machine implementation is made using a pointer to functions, in each case a function
+ * The event machine implementation is made using a pointer to functions array, in each case a function
  * is called depending on the type of msg read from the queue.
 */
 void Serial_PeriodicTask( void )
 {
-    APP_Messages (*SerialEventMachine[ 5 ]) ( APP_CanTypeDef *SerialMsgPtr ) = 
+    APP_Messages (*SerialEventMachine[ SERIAL_N_EVENTS ]) ( APP_CanTypeDef *SerialMsgPtr ) = 
     {
         Evaluate_Time_Parameters,
         Evaluate_Date_Parameters,
@@ -144,7 +144,11 @@ void Serial_PeriodicTask( void )
     while( HIL_QUEUE_isQueueEmptyISR( &queue ) == FALSE )
     {
         (void) HIL_QUEUE_readDataISR( &queue, &SerialMsg );
-        (void) SerialEventMachine[ SerialMsg.bytes[ MSG ] ]( &SerialMsg );
+
+        if( SerialMsg.bytes[ MSG ] < (uint8_t) SERIAL_N_EVENTS )          /*Check if the event is valid*/
+        {
+            (void) SerialEventMachine[ SerialMsg.bytes[ MSG ] ]( &SerialMsg );
+        }
     }
     
 }
@@ -189,6 +193,7 @@ void HAL_FDCAN_RxFifo0Callback( FDCAN_HandleTypeDef *hfdcan, uint32_t TxEventFif
             default:
                 break;
         }
+
         (void) HIL_QUEUE_writeDataISR( &queue, &MsgCAN );     /*add msg to queue*/
     }
 }
