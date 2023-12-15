@@ -1,20 +1,13 @@
 CasioCan project {#mainpage}
 ============
 
-This a subtitle
+Project description.
 -------------
 
-Description with **bold text** and *cursive*
-
-- bullets
-- bullets
-
-1. num bullets
-2. num bullets
+This project consists in a programmable clock using messages that are sent and received through FDCAN module. 
 
 
-> This is just a nice quote like the ones you can find in social media
+> The project is implemented in the STM32-G0B1RE Nucleo board.
 
-This is how we can insert some code snippets
 
 
