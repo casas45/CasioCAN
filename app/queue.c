@@ -168,11 +168,11 @@ void AppQueue_flushQueue( AppQue_Queue *queue )
  */
 unsigned char HIL_QUEUE_writeDataISR( AppQue_Queue *queue, const void *data )
 {   
-    //__disable_irq( );
+    __disable_irq( );
 
     unsigned char varRet = AppQueue_writeData( queue, data );
     
-    //__enable_irq( );
+    __enable_irq( );
     
     return varRet;
 }
@@ -193,11 +193,11 @@ unsigned char HIL_QUEUE_writeDataISR( AppQue_Queue *queue, const void *data )
  */
 unsigned char HIL_QUEUE_readDataISR( AppQue_Queue *queue, void *data )
 {
-    //__disable_irq( );
+    __disable_irq( );
 
     unsigned char varRet = AppQueue_readData( queue, data );
     
-    //__enable_irq( );
+    __enable_irq( );
 
     return varRet;
 }
@@ -231,7 +231,7 @@ unsigned char HIL_QUEUE_isQueueEmptyISR( const AppQue_Queue *queue )
  */
 void HIL_QUEUE_flushQueueISR( AppQue_Queue *queue )
 {
-    //__disable_irq( );
+    __disable_irq( );
     AppQueue_flushQueue( queue );
-    //__enable_irq( );
+    __enable_irq( );
 }

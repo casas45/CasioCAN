@@ -8,14 +8,24 @@
 #include "stm32g0xx.h"
 #include <stdint.h>
 #include <string.h>
+/* cppcheck-suppress misra-c2012-21.6 ; semihosting purpose */
+#include <stdio.h>
 #include "serial.h"
 #include "scheduler.h"
 #include "queue.h"
+#include "clock.h"
 
 /**
  * @brief   Variable with external linkage that is used to configure interrupt in ints.c file.
 */
 extern FDCAN_HandleTypeDef CANHandler;
+
+/** @brief  ClockQueue external reference */
+extern AppQue_Queue ClockQueue;
+
+/** @brief  Scheduler external reference */
+extern AppSched_Scheduler Scheduler;
+
 
 /**
  * @brief   List of messages types.
@@ -27,6 +37,7 @@ typedef enum {
     SERIAL_MSG_OK,          /*!< Msg type ok */
     SERIAL_MSG_ERROR,       /*!< Msg type error */
     SERIAL_N_EVENTS,        /*!< Number of events */
+    SERIAL_MSG_DISPLAY,     /*!< Msg to update display */
     SERIAL_MSG_NONE         /*!< Msg type none */
 } APP_Messages;
 

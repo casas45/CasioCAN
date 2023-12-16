@@ -15,6 +15,8 @@ TARGET = temp
 SRCS  = main.c ints.c msps.c startup_stm32g0b1xx.s system_stm32g0xx.c 
 SRCS += stm32g0xx_hal.c stm32g0xx_hal_cortex.c stm32g0xx_hal_rcc.c stm32g0xx_hal_flash.c
 SRCS += stm32g0xx_hal_gpio.c serial.c queue.c scheduler.c stm32g0xx_hal_fdcan.c
+SRCS += stm32g0xx_hal_rtc.c stm32g0xx_hal_rtc_ex.c stm32g0xx_hal_pwr.c
+SRCS += stm32g0xx_hal_pwr_ex.c stm32g0xx_hal_rcc_ex.c clock.c
 # linker file
 LINKER = linker.ld
 # Global symbols (#defines)
@@ -83,7 +85,7 @@ VPATH = $(SRC_PATHS)
 INCLS = $(addprefix -I ,$(INC_PATHS))
 
 #---Build project----------------------------------------------------------------------------------
-all : lint build $(TARGET)
+all : build $(TARGET)
 
 $(TARGET) : $(addprefix Build/, $(TARGET).elf)
 	$(TOOLCHAIN)-objcopy -Oihex $< Build/$(TARGET).hex

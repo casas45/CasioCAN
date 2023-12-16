@@ -40,7 +40,6 @@
 #define MS_NIBBLE_MASK      0xF0u       /*!< Mask to obtain most significant nibble of a byte*/
 #define LS_NIBBLE_MASK      0x0Fu       /*!< Mask to obtain low significant nibble of a byte*/
 
-
 void Serial_InitTask( void );
 
 void Serial_PeriodicTask( void );

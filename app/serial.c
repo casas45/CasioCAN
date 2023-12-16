@@ -23,14 +23,10 @@ FDCAN_HandleTypeDef CANHandler;
 static FDCAN_TxHeaderTypeDef CANTxHeader;
 
 /**
- * @brief   Struct to place the information that will be passed to the Clk.
-*/
-static APP_MsgTypeDef ClkMsg;
-
-/**
  * @brief   Queue to manage the event machine.
 */
 static AppQue_Queue queue;
+
 
 
 /*Functions prototypes*/
@@ -65,11 +61,10 @@ STATIC APP_Messages Send_Error_Message( APP_CanTypeDef *SerialMsgPtr );
  * is Dual type, with 3 differents ID's.
  * Here is also configured the queue in charge of pass the messages from the CAN interrupt
  * to the state machine.
- * 
 */
 void Serial_InitTask( void )
 {
-    static APP_CanTypeDef messages[ MESSAGES_N ];   /*queue buffer*/
+    APP_CanTypeDef messages[ MESSAGES_N ];   /*queue buffer*/
     /*structure to config CAN filters*/
     FDCAN_FilterTypeDef CANFilter;
 
@@ -272,6 +267,7 @@ STATIC uint8_t Serial_SingleFrameRx( uint8_t *data, uint8_t *size)
 */
 STATIC APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr )
 {   
+    APP_MsgTypeDef ClkMsg;
     APP_CanTypeDef SerialMsg;
     APP_Messages eventRet = SERIAL_MSG_ERROR;
 
@@ -285,10 +281,12 @@ STATIC APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr )
     {
         eventRet = SERIAL_MSG_OK;
         SerialMsg.bytes[MSG] = SERIAL_MSG_OK;
+        
         ClkMsg.msg        = SERIAL_MSG_TIME;
         ClkMsg.tm.tm_hour = hour;
         ClkMsg.tm.tm_min  = minutes;
         ClkMsg.tm.tm_sec  = seconds;
+        (void) HIL_QUEUE_writeDataISR( &ClockQueue, &ClkMsg );
     }
 
     (void) HIL_QUEUE_writeDataISR( &queue, &SerialMsg );
@@ -309,6 +307,7 @@ STATIC APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr )
 */
 STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr )
 {
+    APP_MsgTypeDef ClkMsg;
     APP_CanTypeDef SerialMsg;
     APP_Messages eventRet = SERIAL_MSG_ERROR;
 
@@ -328,6 +327,7 @@ STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr )
         ClkMsg.tm.tm_mon  = month;
         ClkMsg.tm.tm_year = year;
         ClkMsg.tm.tm_wday = WeekDay( day, month, year );
+        (void) HIL_QUEUE_writeDataISR( &ClockQueue, &ClkMsg );
     }
 
     (void) HIL_QUEUE_writeDataISR( &queue, &SerialMsg );
@@ -348,6 +348,7 @@ STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr )
 */
 STATIC APP_Messages Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr )
 {
+    APP_MsgTypeDef ClkMsg;
     APP_CanTypeDef SerialMsg;
     APP_Messages eventRet = SERIAL_MSG_ERROR;
 
@@ -360,7 +361,11 @@ STATIC APP_Messages Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr )
     {
         eventRet = SERIAL_MSG_OK;
         SerialMsg.bytes[MSG] = SERIAL_MSG_OK;
+
         ClkMsg.msg = SERIAL_MSG_ALARM;
+        ClkMsg.tm.tm_hour = hour;
+        ClkMsg.tm.tm_min  = minutes;
+        (void) HIL_QUEUE_writeDataISR( &ClockQueue, &ClkMsg );
     }
 
     (void) HIL_QUEUE_writeDataISR( &queue, &SerialMsg );
