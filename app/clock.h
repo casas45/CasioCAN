@@ -14,13 +14,13 @@
 
 typedef enum
 {
-    IDLE = 0,
-    EVALUATE_MSG,
+    EVALUATE_MSG = 0,
     TIME,
     DATE,
     ALARM,
     DISPLAY,
-    N_CLK_STATES
+    N_CLK_STATES,
+    IDLE
 } ClkState;
 
 void Clock_InitTask( void );

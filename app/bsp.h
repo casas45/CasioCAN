@@ -26,6 +26,7 @@ extern AppQue_Queue ClockQueue;
 /** @brief  Scheduler external reference */
 extern AppSched_Scheduler Scheduler;
 
+extern uint8_t UpdateTimerID;
 
 /**
  * @brief   List of messages types.

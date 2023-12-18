@@ -64,7 +64,7 @@ STATIC APP_Messages Send_Error_Message( APP_CanTypeDef *SerialMsgPtr );
 */
 void Serial_InitTask( void )
 {
-    APP_CanTypeDef messages[ MESSAGES_N ];   /*queue buffer*/
+    static APP_CanTypeDef messages[ MESSAGES_N ];   /*queue buffer*/
     /*structure to config CAN filters*/
     FDCAN_FilterTypeDef CANFilter;
 

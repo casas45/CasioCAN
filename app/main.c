@@ -12,7 +12,7 @@
 #define TIMERS_N            1u          /*!< Number of timers registered in the scheduler */
 #define TICK_VAL            5u          /*!< Tick value to scheduler */
 #define PERIOD_SERIAL_TASK  10u         /*!< Serial task periodicity */
-#define PERIOD_CLOCK_TASK   50u        /*!< Clock task periodicity */
+#define PERIOD_CLOCK_TASK   100u        /*!< Clock task periodicity */
 #define ONE_SECOND          1000u       /*!< Value of 1000 ms*/
 
 extern void initialise_monitor_handles(void);

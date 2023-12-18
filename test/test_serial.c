@@ -49,6 +49,11 @@
   @} */
 
 /**
+ * @brief   reference to the ClockQueue.
+*/
+AppQue_Queue ClockQueue;
+
+/**
  * @brief   variable to test SerialTask with a valid time message
 */
 uint8_t dataTime[BYTES_CAN_MESSAGE] = {VALID_BCD_HOUR, VALID_BCD_MIN, VALID_BCD_SEC, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -103,6 +108,7 @@ void test__Serial_PeriodicTask__queue_with_time_msg( void )
     HIL_QUEUE_readDataISR_ExpectAnyArgsAndReturn( TRUE );
     HIL_QUEUE_readDataISR_ReturnMemThruPtr_data( &SerialMsg, sizeof( APP_CanTypeDef ) );
 
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
     HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
@@ -298,6 +304,7 @@ void test__Evaluate_Time_Parameters__valid_time_OK_MSG( void )
     msgRead.bytes[ PARAMETER_3 ] = VALID_BCD_SEC;
 
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
     eventRet = Evaluate_Time_Parameters( &msgRead );
 
@@ -353,6 +360,7 @@ void test__Evaluate_Date_Parameters__valid_date_OK_MSG( void )
     msgRead.bytes[ PARAMETER_4 ] = VALID_BCD_YEAR_LS;
 
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
     eventRet = Evaluate_Date_Parameters( &msgRead );
 
@@ -377,6 +385,7 @@ void test__Evaluate_Date_Parameters__valid_date_leap_year_OK_MSG( void )
     msgRead.bytes[ PARAMETER_3 ] = VALID_BCD_YEAR_MS_LEAP;
     msgRead.bytes[ PARAMETER_4 ] = VALID_BCD_YEAR_LS_LEAP;
 
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
     eventRet = Evaluate_Date_Parameters( &msgRead );
@@ -431,6 +440,7 @@ void test__Evaluate_Alarm_Parameters__valid_Alarm_OK_MSG( void )
     msgRead.bytes[ PARAMETER_1 ] = VALID_BCD_HOUR;
     msgRead.bytes[ PARAMETER_2 ] = VALID_BCD_MIN;
 
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
     eventRet = Evaluate_Alarm_Parameters( &msgRead );
