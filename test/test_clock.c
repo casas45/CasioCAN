@@ -1,3 +1,8 @@
+/**
+ * @file    test_clock.c
+ * 
+ * @brief   Unit tests for clock state machine.
+*/
 #include "unity.h"
 #include "bsp.h"
 #include "clock.h"
@@ -15,16 +20,29 @@ AppSched_Scheduler Scheduler;
 */
 uint8_t UpdateTimerID;
 
+/**
+ * @brief   Function that runs before any unit test.
+*/
 void setUp( void )
 {
 
 }
 
+/**
+ * @brief   Function that runs after any unit test.
+*/
 void tearDown( void )
 {
 
 }
 
+/**
+ * @brief   Function to test the Clock_InitTask function.
+ * 
+ * This function ignores the initialization of the queue and mocks the HAL_RTC_Init, HAL_RTC_SetTime,
+ * and HAL_RTC_SetDate functions to return HAL_OK.
+ * The aim of this test is to know if all lines are executed in this function.
+*/
 void test__Clock_InitTask__( void )
 {
     AppQueue_initQueue_Ignore( );
@@ -35,6 +53,11 @@ void test__Clock_InitTask__( void )
     Clock_InitTask( );
 }
 
+/**
+ * @brief   Test the ClockUpdate_Callback function.
+ * 
+ * The objective of this test is to check if all lines in this function are executed when it's called.
+*/
 void test__ClockUpdate_Callback( void )
 {
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
@@ -42,116 +65,194 @@ void test__ClockUpdate_Callback( void )
     ClockUpdate_Callback( );
 }
 
-STATIC ClkState Evaluate_Msg( const APP_MsgTypeDef *PtrMsgClk );
-
-void test__Evaluate_Msg__SERIAL_MSG_TIME_return_time_state( void )
+/**
+ * @brief   test Clock_PeriodTask, queue with a time message.
+ * 
+ * It's defined message of type SERIAL_MSG_TIME.
+ * Mock the function HIL_QUEUE_isQueueEmptyISR to return a FALSE value first, then a TRUE value.
+ * Also mock the function HIL_QUEUE_readDataISR to return the defined message.
+ * And finally call the function to ensure that the correct function is run. 
+*/
+void test__Clock_PeriodicTask__time_msg_case_TIME( void )
 {
-    APP_MsgTypeDef msgReceived = {0};
-    ClkState retState;
+    APP_MsgTypeDef receivedMSG = {0};
+    receivedMSG.msg = CLOCK_MSG_TIME;
 
-    msgReceived.msg = SERIAL_MSG_TIME;
+    HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( FALSE );
+    HIL_QUEUE_readDataISR_ExpectAnyArgsAndReturn( TRUE );
+    HIL_QUEUE_readDataISR_ReturnMemThruPtr_data( &receivedMSG, sizeof( APP_Messages ) );
+    HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
+    HAL_RTC_SetTime_ExpectAnyArgsAndReturn( TRUE );
 
-    retState = Evaluate_Msg( &msgReceived );
-
-    TEST_ASSERT_EQUAL( retState, TIME );
+    Clock_PeriodicTask( );
 }
 
-void test__Evaluate_Msg__SERIAL_MSG_DATE_return_date_state( void )
+/**
+ * @brief   test Clock_PeriodTask, queue with a date message.
+ * 
+ * It's defined message of type SERIAL_MSG_DATE.
+ * Mock the function HIL_QUEUE_isQueueEmptyISR to return a FALSE value first, then a TRUE value.
+ * Also mock the function HIL_QUEUE_readDataISR to return the defined message.
+ * And finally call the function to ensure that the correct function is run. 
+*/
+void test__Clock_PeriodicTask__date_msg_case_DATE( void )
 {
-    APP_MsgTypeDef msgReceived = {0};
-    ClkState retState;
+    APP_MsgTypeDef receivedMSG = {0};
+    receivedMSG.msg = CLOCK_MSG_DATE;
 
-    msgReceived.msg = SERIAL_MSG_DATE;
+    HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( FALSE );
+    HIL_QUEUE_readDataISR_ExpectAnyArgsAndReturn( TRUE );
+    HIL_QUEUE_readDataISR_ReturnMemThruPtr_data( &receivedMSG, sizeof( APP_Messages ) );
+    HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
+    HAL_RTC_SetDate_ExpectAnyArgsAndReturn( TRUE );
 
-    retState = Evaluate_Msg( &msgReceived );
-
-    TEST_ASSERT_EQUAL( retState, DATE );
+    Clock_PeriodicTask( );
 }
 
-void test__Evaluate_Msg__SERIAL_MSG_ALARM_return_alarm_state( void )
+/**
+ * @brief   test Clock_PeriodTask queue with a ALARM message.
+ * 
+ * It's defined message of type SERIAL_MSG_ALARM.
+ * Mock the function HIL_QUEUE_isQueueEmptyISR to return a FALSE value first, then a TRUE value.
+ * Also mock the function HIL_QUEUE_readDataISR to return the defined message.
+ * And finally call the function to ensure that the correct function is run. 
+*/
+void test__Clock_PeriodicTask__alarm_msg_case_alarm( void )
 {
-    APP_MsgTypeDef msgReceived = {0};
-    ClkState retState;
+    APP_MsgTypeDef receivedMSG = {0};
+    receivedMSG.msg = CLOCK_MSG_ALARM;
 
-    msgReceived.msg = SERIAL_MSG_ALARM;
+    HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( FALSE );
+    HIL_QUEUE_readDataISR_ExpectAnyArgsAndReturn( TRUE );
+    HIL_QUEUE_readDataISR_ReturnMemThruPtr_data( &receivedMSG, sizeof( APP_Messages ) );
+    HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
+    HAL_RTC_SetAlarm_ExpectAnyArgsAndReturn( TRUE );
 
-    retState = Evaluate_Msg( &msgReceived );
-
-    TEST_ASSERT_EQUAL( retState, ALARM );
+    Clock_PeriodicTask( );
 }
 
-void test__Evaluate_Msg__SERIAL_MSG_DISPLAY_return_display_state( void )
+/**
+ * @brief   test Clock_PeriodTask queue with a DISPLAY message.
+ * 
+ * It's defined message of type SERIAL_MSG_DISPLAY.
+ * Mock the function HIL_QUEUE_isQueueEmptyISR to return a FALSE value first, then a TRUE value.
+ * Also mock the function HIL_QUEUE_readDataISR to return the defined message.
+ * And finally call the function to ensure that the correct function is run. 
+*/
+void test__Clock_PeriodicTask__display_msg_case_DISPLAY( void )
 {
-    APP_MsgTypeDef msgReceived = {0};
-    ClkState retState;
+    APP_MsgTypeDef receivedMSG = {0};
+    receivedMSG.msg = CLOCK_MSG_DISPLAY;
 
-    msgReceived.msg = SERIAL_MSG_DISPLAY;
+    HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( FALSE );
+    HIL_QUEUE_readDataISR_ExpectAnyArgsAndReturn( TRUE );
+    HIL_QUEUE_readDataISR_ReturnMemThruPtr_data( &receivedMSG, sizeof( APP_Messages ) );
+    HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
+    HAL_RTC_GetTime_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_RTC_GetDate_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_RTC_GetAlarm_ExpectAnyArgsAndReturn( HAL_OK );
 
-    retState = Evaluate_Msg( &msgReceived );
-
-    TEST_ASSERT_EQUAL( retState, DISPLAY );
+    Clock_PeriodicTask( );
 }
 
-void test__Evaluate_Msg__default_case_return_idle_state( void )
+/**
+ * @brief   test Clock_PeriodTask queue with a unkown message.
+ * 
+ * It's defined message of type unkown.
+ * Mock the function HIL_QUEUE_isQueueEmptyISR to return a FALSE value first, then a TRUE value.
+ * Also mock the function HIL_QUEUE_readDataISR to return the defined message.
+ * And finally call the function to ensure that any function is run. 
+*/
+void test__Clock_PeriodicTask__uknown_msg_dont_run_any_function( void )
 {
-    APP_MsgTypeDef msgReceived = {0};
-    ClkState retState;
+    APP_MsgTypeDef receivedMSG = {0};
+    receivedMSG.msg = 0xFF;
 
-    msgReceived.msg = 0xFF;     /*default value*/
+    HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( FALSE );
+    HIL_QUEUE_readDataISR_ExpectAnyArgsAndReturn( TRUE );
+    HIL_QUEUE_readDataISR_ReturnMemThruPtr_data( &receivedMSG, sizeof( APP_Messages ) );
+    HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
 
-    retState = Evaluate_Msg( &msgReceived );
-
-    TEST_ASSERT_EQUAL( retState, IDLE );
+    Clock_PeriodicTask( );
 }
 
-STATIC ClkState Update_Time( APP_MsgTypeDef *PtrMsgClk );
+/** @brief Reference for the private function Update_Time.
+ *  
+ * @retval  Return the next state.
+*/
+STATIC HAL_StatusTypeDef Update_Time( APP_MsgTypeDef * );
 
+/**
+ * @brief   test Update_Time function.
+*/
 void test__Update_Time__return_IDLE_state( void )
 {
     APP_MsgTypeDef msgReceived = {0};
-    ClkState retState;
+    HAL_StatusTypeDef retState;
 
     HAL_RTC_SetTime_ExpectAnyArgsAndReturn( HAL_OK );
 
     retState = Update_Time( &msgReceived );
 
-    TEST_ASSERT_EQUAL( retState, IDLE );
+    TEST_ASSERT_EQUAL( retState, HAL_OK );
 }
 
-STATIC ClkState Update_Date( APP_MsgTypeDef *PtrMsgClk );
+/** @brief Reference for the private function Update_Date.
+ *  
+ * @retval  Return the next state.
+*/
+STATIC HAL_StatusTypeDef Update_Date( APP_MsgTypeDef * );
 
+/**
+ * @brief   test Update_Date function.
+ *  
+*/
 void test__Update_Date__return_IDLE_state( void )
 {
     APP_MsgTypeDef msgReceived = {0};
-    ClkState retState;
+    HAL_StatusTypeDef retState;
 
     HAL_RTC_SetDate_ExpectAnyArgsAndReturn( HAL_OK );
 
     retState = Update_Date( &msgReceived );
 
-    TEST_ASSERT_EQUAL( retState, IDLE );
+    TEST_ASSERT_EQUAL( retState, HAL_OK );
 }
 
-STATIC ClkState Set_Alarm( APP_MsgTypeDef *PtrMsgClk );
+/** @brief Reference for the private function Set_Alarm.
+ *  
+ * @retval  Return the next state.
+*/
+STATIC HAL_StatusTypeDef Set_Alarm( APP_MsgTypeDef * );
 
+/**
+ * @brief   test Set_Alarm function.
+*/
 void test__Set_Alarm__return_IDLE_state( void )
 {
     APP_MsgTypeDef msgReceived = {0};
-    ClkState retState;
+    HAL_StatusTypeDef retState;
 
     HAL_RTC_SetAlarm_ExpectAnyArgsAndReturn( HAL_OK );
 
     retState = Set_Alarm( &msgReceived );
 
-    TEST_ASSERT_EQUAL( retState, IDLE );    
+    TEST_ASSERT_EQUAL( retState, HAL_OK );    
 }
 
-STATIC ClkState Update_Display( APP_MsgTypeDef *PtrMsgClk );
+/** @brief Reference for the private function Update_Display 
+ *  
+ * @retval  Return the next state.
+*/
+STATIC HAL_StatusTypeDef Update_Display( APP_MsgTypeDef * );
 
+/**
+ * @brief   test Update_Display function.
+*/
 void test__Update_Display__return_IDLE_state( void )
 {
     APP_MsgTypeDef msgReceived = {0};
-    ClkState retState;
+    HAL_StatusTypeDef retState;
 
     HAL_RTC_GetTime_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetDate_ExpectAnyArgsAndReturn( HAL_OK );
@@ -159,5 +260,5 @@ void test__Update_Display__return_IDLE_state( void )
 
     retState = Update_Display( &msgReceived );
 
-    TEST_ASSERT_EQUAL( retState, IDLE );   
+    TEST_ASSERT_EQUAL( retState, HAL_OK );   
 }

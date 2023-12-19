@@ -6,7 +6,8 @@
 #include "clock.h"
 #include "bsp.h"
 
-#define N_MESSAGES_CLKQUEUE   0x0Au      /*!< Number of messages in ClkQueue */
+#define N_MESSAGES_CLKQUEUE     0x0Au      /*!< Number of messages in ClkQueue */
+#define CENTENARY               0x64u      /*!< Value of a centenary */
 
 /**
  * @brief Queue to communicate serial and clock tasks.
@@ -26,22 +27,22 @@ static RTC_DateTypeDef sDate = {0};
 static RTC_AlarmTypeDef sAlarm = {0};
 
 
-STATIC ClkState Evaluate_Msg( const APP_MsgTypeDef *PtrMsgClk );
+STATIC HAL_StatusTypeDef Update_Time( APP_MsgTypeDef *PtrMsgClk );
 
-STATIC ClkState Update_Time( APP_MsgTypeDef *PtrMsgClk );
+STATIC HAL_StatusTypeDef Update_Date( APP_MsgTypeDef *PtrMsgClk );
 
-STATIC ClkState Update_Date( APP_MsgTypeDef *PtrMsgClk );
+STATIC HAL_StatusTypeDef Set_Alarm( APP_MsgTypeDef *PtrMsgClk );
 
-STATIC ClkState Set_Alarm( APP_MsgTypeDef *PtrMsgClk );
-
-STATIC ClkState Update_Display( APP_MsgTypeDef *PtrMsgClk );
+STATIC HAL_StatusTypeDef Update_Display( APP_MsgTypeDef *PtrMsgClk );
 
 /**
  * @brief   Function to initialize RTC module and ClkQueue.
  * 
  * In this function is configured the ClkQueue that is in charge of communicate serial and clock
- * tasks, and also is initialized the RTC module  with 24hour format, and the time and date is set
- * in BCD format.
+ * tasks, and also is initialized the RTC module with 24hour format, the values for PREDIV_A and 
+ * PREDIV_S are 127 and 255, respectively, to deliver a frequency of 1 Hz clock to the calendar
+ * unit, taking into account the RTC is working with the LSE clock.
+ * The alarm A is configure to consider just the hour and minutes.
 */
 void Clock_InitTask( void )
 {
@@ -92,7 +93,7 @@ void ClockUpdate_Callback( void )
 {
     APP_MsgTypeDef msgCallback = {0};
 
-    msgCallback.msg = SERIAL_MSG_DISPLAY;
+    msgCallback.msg = CLOCK_MSG_DISPLAY;
 
     (void) HIL_QUEUE_writeDataISR( &ClockQueue, &msgCallback );
     (void) AppSched_startTimer( &Scheduler, UpdateTimerID );    /*Restart the timer */
@@ -106,91 +107,26 @@ void ClockUpdate_Callback( void )
 */
 void Clock_PeriodicTask( void )
 {
-    static ClkState state = IDLE;
     static APP_MsgTypeDef MsgClkRead = {0};
 
-    ClkState (*ClockStateMachine[ N_CLK_STATES ]) ( APP_MsgTypeDef *PtrMsgClk ) =
+    HAL_StatusTypeDef (*ClockStateMachine[ N_CLK_STATES ]) (APP_MsgTypeDef *PtrMsgClk) = 
     {
-        Evaluate_Msg,
         Update_Time,
         Update_Date,
         Set_Alarm,
         Update_Display
     };
-    
-    while( ( HIL_QUEUE_isQueueEmptyISR( &ClockQueue ) == FALSE ) || ( state != IDLE ) )
+
+    while( ( HIL_QUEUE_isQueueEmptyISR( &ClockQueue ) == FALSE ) )
     {
-        switch ( state )
+        (void) HIL_QUEUE_readDataISR( &ClockQueue, &MsgClkRead );
+
+        if ( MsgClkRead.msg < (uint8_t) N_CLK_STATES )
         {
-            case IDLE:
-                    state = EVALUATE_MSG;
-                break;
-
-            case EVALUATE_MSG:
-                    (void) HIL_QUEUE_readDataISR( &ClockQueue, &MsgClkRead );
-                    state = Evaluate_Msg( &MsgClkRead );
-                break;
-
-            case TIME:
-                    state = Update_Time( &MsgClkRead );
-                break;
-
-            case DATE:
-                    state = Update_Date( &MsgClkRead );
-                break;
-            
-            case ALARM:
-                    state = Set_Alarm( &MsgClkRead );
-                break;
-
-            case DISPLAY:
-                    state = Update_Display( &MsgClkRead );
-                break;
-
-            default:
-                break;
+            (void) ClockStateMachine[ MsgClkRead.msg ]( &MsgClkRead );
         }
     }
         
-}
-
-/**
- * @brief   Function to evaluate the msg from ClkQueue.
- * 
- * The msg element of the PtrMsgClk is evaluated to know wich state is next to run, this is made
- * using a switch sentence.
- * 
- * @param   PtrMsgClk [in] Pointer to the clock message read from ClkQueue.
- * 
- * @retval  The next state determined based on the message type. Possible values are: IDLE, TIME, DATE, ALARM, DISPLAY
-*/
-STATIC ClkState Evaluate_Msg( const APP_MsgTypeDef *PtrMsgClk )
-{
-    ClkState retState = IDLE;
-    
-    switch ( PtrMsgClk->msg )
-    {
-        case SERIAL_MSG_TIME:
-            retState = TIME;
-            break;
-
-        case SERIAL_MSG_DATE:
-            retState = DATE;
-            break;
-
-        case SERIAL_MSG_ALARM:
-            retState = ALARM;
-            break;
-        
-        case SERIAL_MSG_DISPLAY:
-            retState = DISPLAY;
-            break;
-
-        default:
-            break;
-    }
-
-    return retState;
 }
 
 /**
@@ -202,16 +138,18 @@ STATIC ClkState Evaluate_Msg( const APP_MsgTypeDef *PtrMsgClk )
  * 
  * @param   PtrMsgClk [in] Pointer to the clock message read from ClkQueue.
  * 
- * @retval  Next state, always is IDLE.
+ * @retval  Return the status of the HAL_RTC_SetTime function.
 */
-STATIC ClkState Update_Time( APP_MsgTypeDef *PtrMsgClk )
+STATIC HAL_StatusTypeDef Update_Time( APP_MsgTypeDef *PtrMsgClk )
 {
+    HAL_StatusTypeDef retStatus = HAL_ERROR;
+
     sTime.Hours     = PtrMsgClk->tm.tm_hour;
     sTime.Minutes   = PtrMsgClk->tm.tm_min;
     sTime.Seconds   = PtrMsgClk->tm.tm_sec;
-    (void) HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
+    retStatus = HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
 
-    return IDLE;
+    return retStatus;
 }
 
 /**
@@ -223,20 +161,22 @@ STATIC ClkState Update_Time( APP_MsgTypeDef *PtrMsgClk )
  * 
  * @param   PtrMsgClk [in] Pointer to the clock message read from ClkQueue.
  * 
- * @retval  Next state, always is IDLE.
+ * @retval  Return the status of the HAL_RTC_SetDate function.
  * 
  * @note    Only the last two digits of the year are used because that's how the RTC works.
 */
-STATIC ClkState Update_Date( APP_MsgTypeDef *PtrMsgClk )
+STATIC HAL_StatusTypeDef Update_Date( APP_MsgTypeDef *PtrMsgClk )
 {
-    sDate.WeekDay   = RTC_WEEKDAY_FRIDAY;
+    HAL_StatusTypeDef retStatus = HAL_ERROR;
+
+    sDate.WeekDay   = PtrMsgClk->tm.tm_wday;
     sDate.Date      = PtrMsgClk->tm.tm_mday;
     sDate.Month     = PtrMsgClk->tm.tm_mon;
-    sDate.Year      = (uint8_t) ( PtrMsgClk->tm.tm_year % 100u );
+    sDate.Year      = (uint8_t) ( PtrMsgClk->tm.tm_year % CENTENARY );  /*Get last two digits of the year*/
 
-    (void) HAL_RTC_SetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
+    retStatus = HAL_RTC_SetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
 
-    return IDLE;
+    return retStatus;
 }
 
 /**
@@ -248,17 +188,18 @@ STATIC ClkState Update_Date( APP_MsgTypeDef *PtrMsgClk )
  * 
  * @param   PtrMsgClk [in] Pointer to the clock message read from ClkQueue.
  * 
- * @retval  Next state, always is IDLE.
+ * @retval  Return the status of the HAL_RTC_SetAlarm function.
 */
-STATIC ClkState Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
+STATIC HAL_StatusTypeDef Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
 {
-    
+    HAL_StatusTypeDef retStatus = HAL_ERROR;
+
     sAlarm.AlarmTime.Hours      = PtrMsgClk->tm.tm_hour;
     sAlarm.AlarmTime.Minutes    = PtrMsgClk->tm.tm_min;
 
-    (void) HAL_RTC_SetAlarm( &hrtc, &sAlarm, RTC_FORMAT_BIN );
+    retStatus = HAL_RTC_SetAlarm( &hrtc, &sAlarm, RTC_FORMAT_BIN );
 
-    return IDLE;
+    return retStatus;
 }
 
 /**
@@ -272,17 +213,18 @@ STATIC ClkState Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
  * 
  * @retval  Next state, always is IDLE.
 */
-STATIC ClkState Update_Display( APP_MsgTypeDef *PtrMsgClk )
+STATIC HAL_StatusTypeDef Update_Display( APP_MsgTypeDef *PtrMsgClk )
 {
     (void) PtrMsgClk;
+    HAL_StatusTypeDef retStatus = HAL_ERROR;
 
-    HAL_RTC_GetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
-    HAL_RTC_GetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
-    HAL_RTC_GetAlarm( &hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN );
+    retStatus = HAL_RTC_GetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
+    retStatus |= HAL_RTC_GetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
+    retStatus |= HAL_RTC_GetAlarm( &hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN );
 
     (void) printf( "Time: %d:%d:%d\n\r", sTime.Hours, sTime.Minutes, sTime.Seconds );
     (void) printf( "Date: %d/%d/%d\n\r", sDate.Date, sDate.Month, sDate.Year );
     (void) printf( "Alarm: %d:%d\n\r", sAlarm.AlarmTime.Hours, sAlarm.AlarmTime.Minutes );
 
-    return IDLE;   
+    return retStatus;   
 }

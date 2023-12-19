@@ -282,7 +282,7 @@ STATIC APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr )
         eventRet = SERIAL_MSG_OK;
         SerialMsg.bytes[MSG] = SERIAL_MSG_OK;
         
-        ClkMsg.msg        = SERIAL_MSG_TIME;
+        ClkMsg.msg        = CLOCK_MSG_TIME;
         ClkMsg.tm.tm_hour = hour;
         ClkMsg.tm.tm_min  = minutes;
         ClkMsg.tm.tm_sec  = seconds;
@@ -322,7 +322,8 @@ STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr )
     {
         eventRet = SERIAL_MSG_OK;
         SerialMsg.bytes[MSG] = SERIAL_MSG_OK;
-        ClkMsg.msg        = SERIAL_MSG_DATE;
+
+        ClkMsg.msg        = CLOCK_MSG_DATE;
         ClkMsg.tm.tm_mday = day;
         ClkMsg.tm.tm_mon  = month;
         ClkMsg.tm.tm_year = year;
@@ -362,7 +363,7 @@ STATIC APP_Messages Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr )
         eventRet = SERIAL_MSG_OK;
         SerialMsg.bytes[MSG] = SERIAL_MSG_OK;
 
-        ClkMsg.msg = SERIAL_MSG_ALARM;
+        ClkMsg.msg = CLOCK_MSG_ALARM;
         ClkMsg.tm.tm_hour = hour;
         ClkMsg.tm.tm_min  = minutes;
         (void) HIL_QUEUE_writeDataISR( &ClockQueue, &ClkMsg );
@@ -481,7 +482,7 @@ STATIC uint8_t Validate_Date( uint8_t days, uint8_t month, uint16_t year )
  * @param   month [in] month.
  * @param   year [in] year value.
  * 
- * @retval  Return the week day (0 to 6 -> Sunday to Monday).
+ * @retval  Return the week day from Monday (1) to Sunday (7).
 */
 STATIC uint8_t WeekDay( uint8_t days, uint8_t month, uint16_t year ){
     unsigned long part1;
@@ -496,6 +497,8 @@ STATIC uint8_t WeekDay( uint8_t days, uint8_t month, uint16_t year ){
 
     unsigned char result;
 
+    const unsigned char weekday[7u] = { 7, 1, 2, 3, 4, 5, 6 };
+
     part1 = day + ( ( 153u * ( months + ( 12u * ( ( 14u - months ) / 12u ) ) - 3u ) + 2u ) / 5u );
 
     part2 = 365u * ( years + 4800u - ( ( 14u - months ) / 12u ) );
@@ -508,7 +511,7 @@ STATIC uint8_t WeekDay( uint8_t days, uint8_t month, uint16_t year ){
 
     result = (unsigned char) ( ( part1 + part2 + part3 - part4 + part5 ) % 7u );
 
-    return result;
+    return weekday[ result ];
 }
 
 /**

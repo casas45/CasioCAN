@@ -37,14 +37,13 @@
 /** 
   * @defgroup   WeekDays WeekDays according WeekDay function.
   @{ */
-
-#define SUNDAY              0x00u       /*!< Sunday (0)*/
 #define MONDAY              0x01u       /*!< Monday (1)*/
 #define TUESDAY             0x02u       /*!< Tuesday (2)*/
 #define WEDNESDAY           0x03u       /*!< Wednesday (3)*/
 #define THURSDAY            0x04u       /*!< Thursday (4)*/
 #define FRIDAY              0x05u       /*!< Friday (5)*/
 #define SATURDAY            0x06u       /*!< Saturday (6)*/
+#define SUNDAY              0x07u       /*!< Sunday (7)*/
 /**
   @} */
 
@@ -1047,4 +1046,61 @@ void test__WeekDay__date_29_02_2024_leap_year_return_4_thursday( void )
     varRet = WeekDay( days, month, year );
 
     TEST_ASSERT_EQUAL( THURSDAY, varRet );
+}
+
+/**
+ * @brief   test WeekDay with date 18/02/2024 sunday.
+ * 
+ * Declare varRet to save the value returned by the function; days, month and year are the
+ * parameters to test the function. Finally the returned value is tested with TEST_ASSERT_EQUAL
+ * to know if the fucntion return the correct day corresponding with the date.
+*/
+void test__WeekDay__date_18_02_2024_return_7_sunday( void )
+{
+    uint8_t varRet;
+    const uint8_t days = 18u;   
+    const uint8_t month = 2u;
+    const uint16_t year = 2024u;
+
+    varRet = WeekDay( days, month, year );
+
+    TEST_ASSERT_EQUAL( SUNDAY, varRet );
+}
+
+/**
+ * @brief   test WeekDay with date 30/11/2029 friday.
+ * 
+ * Declare varRet to save the value returned by the function; days, month and year are the
+ * parameters to test the function. Finally the returned value is tested with TEST_ASSERT_EQUAL
+ * to know if the fucntion return the correct day corresponding with the date.
+*/
+void test__WeekDay__date_30_11_2029_return_5_friday( void )
+{
+    uint8_t varRet;
+    const uint8_t days = 30u;   
+    const uint8_t month = 11u;
+    const uint16_t year = 2029u;
+
+    varRet = WeekDay( days, month, year );
+
+    TEST_ASSERT_EQUAL( FRIDAY, varRet );
+}
+
+/**
+ * @brief   test WeekDay with date 02/04/2029 monday.
+ * 
+ * Declare varRet to save the value returned by the function; days, month and year are the
+ * parameters to test the function. Finally the returned value is tested with TEST_ASSERT_EQUAL
+ * to know if the fucntion return the correct day corresponding with the date.
+*/
+void test__WeekDay__date_02_04_2029_return_1_monday( void )
+{
+    uint8_t varRet;
+    const uint8_t days = 2u;   
+    const uint8_t month = 4u;
+    const uint16_t year = 2029u;
+
+    varRet = WeekDay( days, month, year );
+
+    TEST_ASSERT_EQUAL( MONDAY, varRet );
 }

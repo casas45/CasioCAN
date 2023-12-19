@@ -38,7 +38,6 @@ typedef enum {
     SERIAL_MSG_OK,          /*!< Msg type ok */
     SERIAL_MSG_ERROR,       /*!< Msg type error */
     SERIAL_N_EVENTS,        /*!< Number of events */
-    SERIAL_MSG_DISPLAY,     /*!< Msg to update display */
     SERIAL_MSG_NONE         /*!< Msg type none */
 } APP_Messages;
 
@@ -75,5 +74,19 @@ typedef struct _App_CanTypeDef
     uint8_t lenght;         /*!< CAN messsge lenght*/
 } APP_CanTypeDef;
 
+/**
+ * @enum    ClkMessages
+ * 
+ * @brief   Enum to clasify the clock messages.
+*/
+/* cppcheck-suppress misra-c2012-2.4 ; this enum is only used to clasify the clock messages */
+typedef enum
+{
+    CLOCK_MSG_TIME = 0,     /*!< Msg to update RTC time */
+    CLOCK_MSG_DATE,         /*!< Msg to update RTC date */
+    CLOCK_MSG_ALARM,        /*!< Msg to update RTC alarm */
+    CLOCK_MSG_DISPLAY,      /*!< Msg to update display */
+    N_CLK_STATES            /*!< Number of state in clock state machine*/
+} ClkMessages;
 
 #endif

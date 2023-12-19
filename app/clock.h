@@ -12,17 +12,6 @@
 #define STATIC
 #endif
 
-typedef enum
-{
-    EVALUATE_MSG = 0,
-    TIME,
-    DATE,
-    ALARM,
-    DISPLAY,
-    N_CLK_STATES,
-    IDLE
-} ClkState;
-
 void Clock_InitTask( void );
 
 void Clock_PeriodicTask( void );

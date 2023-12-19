@@ -15,6 +15,9 @@
 #define PERIOD_CLOCK_TASK   100u        /*!< Clock task periodicity */
 #define ONE_SECOND          1000u       /*!< Value of 1000 ms*/
 
+/**
+ * @brief   Reference to semihosting function.
+*/
 extern void initialise_monitor_handles(void);
 
 AppSched_Scheduler Scheduler;
