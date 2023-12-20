@@ -83,6 +83,7 @@ void test__Clock_PeriodicTask__time_msg_case_TIME( void )
     HIL_QUEUE_readDataISR_ReturnMemThruPtr_data( &receivedMSG, sizeof( APP_Messages ) );
     HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
     HAL_RTC_SetTime_ExpectAnyArgsAndReturn( TRUE );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
     Clock_PeriodicTask( );
 }
@@ -105,6 +106,7 @@ void test__Clock_PeriodicTask__date_msg_case_DATE( void )
     HIL_QUEUE_readDataISR_ReturnMemThruPtr_data( &receivedMSG, sizeof( APP_Messages ) );
     HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
     HAL_RTC_SetDate_ExpectAnyArgsAndReturn( TRUE );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
     Clock_PeriodicTask( );
 }
@@ -127,6 +129,7 @@ void test__Clock_PeriodicTask__alarm_msg_case_alarm( void )
     HIL_QUEUE_readDataISR_ReturnMemThruPtr_data( &receivedMSG, sizeof( APP_Messages ) );
     HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
     HAL_RTC_SetAlarm_ExpectAnyArgsAndReturn( TRUE );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
     Clock_PeriodicTask( );
 }
@@ -176,11 +179,8 @@ void test__Clock_PeriodicTask__uknown_msg_dont_run_any_function( void )
     Clock_PeriodicTask( );
 }
 
-/** @brief Reference for the private function Update_Time.
- *  
- * @retval  Return the next state.
-*/
-STATIC HAL_StatusTypeDef Update_Time( APP_MsgTypeDef * );
+/** @brief Reference for the private function Update_Time. */
+STATIC void Update_Time( APP_MsgTypeDef * );
 
 /**
  * @brief   test Update_Time function.
@@ -188,77 +188,66 @@ STATIC HAL_StatusTypeDef Update_Time( APP_MsgTypeDef * );
 void test__Update_Time__return_IDLE_state( void )
 {
     APP_MsgTypeDef msgReceived = {0};
-    HAL_StatusTypeDef retState;
 
     HAL_RTC_SetTime_ExpectAnyArgsAndReturn( HAL_OK );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    retState = Update_Time( &msgReceived );
-
-    TEST_ASSERT_EQUAL( retState, HAL_OK );
+    Update_Time( &msgReceived );
 }
 
-/** @brief Reference for the private function Update_Date.
- *  
- * @retval  Return the next state.
+/** 
+ * @brief Reference for the private function Update_Date.
 */
-STATIC HAL_StatusTypeDef Update_Date( APP_MsgTypeDef * );
+STATIC void Update_Date( APP_MsgTypeDef * );
 
 /**
  * @brief   test Update_Date function.
  *  
 */
-void test__Update_Date__return_IDLE_state( void )
+void test__Update_Date( void )
 {
     APP_MsgTypeDef msgReceived = {0};
-    HAL_StatusTypeDef retState;
 
     HAL_RTC_SetDate_ExpectAnyArgsAndReturn( HAL_OK );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    retState = Update_Date( &msgReceived );
-
-    TEST_ASSERT_EQUAL( retState, HAL_OK );
+    Update_Date( &msgReceived );
 }
 
 /** @brief Reference for the private function Set_Alarm.
  *  
  * @retval  Return the next state.
 */
-STATIC HAL_StatusTypeDef Set_Alarm( APP_MsgTypeDef * );
+STATIC void Set_Alarm( APP_MsgTypeDef * );
 
 /**
  * @brief   test Set_Alarm function.
 */
-void test__Set_Alarm__return_IDLE_state( void )
+void test__Set_Alarm( void )
 {
     APP_MsgTypeDef msgReceived = {0};
-    HAL_StatusTypeDef retState;
 
     HAL_RTC_SetAlarm_ExpectAnyArgsAndReturn( HAL_OK );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    retState = Set_Alarm( &msgReceived );
-
-    TEST_ASSERT_EQUAL( retState, HAL_OK );    
+    Set_Alarm( &msgReceived );
 }
 
-/** @brief Reference for the private function Update_Display 
- *  
- * @retval  Return the next state.
+/** 
+ * @brief Reference for the private function Update_Display 
 */
-STATIC HAL_StatusTypeDef Update_Display( APP_MsgTypeDef * );
+STATIC void Update_Display( APP_MsgTypeDef * );
 
 /**
  * @brief   test Update_Display function.
 */
-void test__Update_Display__return_IDLE_state( void )
+void test__Update_Display( void )
 {
     APP_MsgTypeDef msgReceived = {0};
-    HAL_StatusTypeDef retState;
 
     HAL_RTC_GetTime_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetDate_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetAlarm_ExpectAnyArgsAndReturn( HAL_OK );
 
-    retState = Update_Display( &msgReceived );
-
-    TEST_ASSERT_EQUAL( retState, HAL_OK );   
+    Update_Display( &msgReceived );
 }

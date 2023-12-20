@@ -16,23 +16,23 @@ void HAL_MspInit( void )
     __HAL_RCC_LSEDRIVE_CONFIG( RCC_LSEDRIVE_LOW );
 
     /*reset previous RTC source clock*/
-    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_RTC;
-    PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_NONE;
+    PeriphClkInitStruct.PeriphClockSelection    = RCC_PERIPHCLK_RTC;
+    PeriphClkInitStruct.RTCClockSelection       = RCC_RTCCLKSOURCE_NONE;
     HAL_RCCEx_PeriphCLKConfig( &PeriphClkInitStruct );
     
     /* Init the LSE oscillator */
-    RCC_OscInitStruct.OscillatorType =  RCC_OSCILLATORTYPE_LSI | RCC_OSCILLATORTYPE_LSE;
-    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
-    RCC_OscInitStruct.LSEState = RCC_LSE_ON;    /*enable LSE*/
-    RCC_OscInitStruct.LSIState = RCC_LSI_OFF;   /*disable LSI*/
+    RCC_OscInitStruct.OscillatorType    =  RCC_OSCILLATORTYPE_LSI | RCC_OSCILLATORTYPE_LSE;
+    RCC_OscInitStruct.PLL.PLLState      = RCC_PLL_NONE;
+    RCC_OscInitStruct.LSEState          = RCC_LSE_ON;    /*enable LSE*/
+    RCC_OscInitStruct.LSIState          = RCC_LSI_OFF;   /*disable LSI*/
     HAL_RCC_OscConfig( &RCC_OscInitStruct );
 
     /*Set LSE as source clock for the RTC*/
     PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
     HAL_RCCEx_PeriphCLKConfig( &PeriphClkInitStruct );
       
-    /* Peripheral clock enable */
-    __HAL_RCC_RTC_ENABLE();
+    
+    __HAL_RCC_RTC_ENABLE();         /*Enable the clock for the RTC */
     __HAL_RCC_RTCAPB_CLK_ENABLE();
 }
 

@@ -52,7 +52,6 @@
     - app/main.c              # Ignore main file (renmove from here ig needed)
     - app/ints.c              # Do not test interrupt vectors
     - app/msps.c              # Do not test extra initlization functions
-    - Build/**
   :gcovr:
     :report_include: app/*
 

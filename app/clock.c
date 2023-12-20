@@ -27,13 +27,13 @@ static RTC_DateTypeDef sDate = {0};
 static RTC_AlarmTypeDef sAlarm = {0};
 
 
-STATIC HAL_StatusTypeDef Update_Time( APP_MsgTypeDef *PtrMsgClk );
+STATIC void Update_Time( APP_MsgTypeDef *PtrMsgClk );
 
-STATIC HAL_StatusTypeDef Update_Date( APP_MsgTypeDef *PtrMsgClk );
+STATIC void Update_Date( APP_MsgTypeDef *PtrMsgClk );
 
-STATIC HAL_StatusTypeDef Set_Alarm( APP_MsgTypeDef *PtrMsgClk );
+STATIC void Set_Alarm( APP_MsgTypeDef *PtrMsgClk );
 
-STATIC HAL_StatusTypeDef Update_Display( APP_MsgTypeDef *PtrMsgClk );
+STATIC void Update_Display( APP_MsgTypeDef *PtrMsgClk );
 
 /**
  * @brief   Function to initialize RTC module and ClkQueue.
@@ -107,9 +107,9 @@ void ClockUpdate_Callback( void )
 */
 void Clock_PeriodicTask( void )
 {
-    static APP_MsgTypeDef MsgClkRead = {0};
+    APP_MsgTypeDef MsgClkRead = {0};
 
-    HAL_StatusTypeDef (*ClockStateMachine[ N_CLK_STATES ]) (APP_MsgTypeDef *PtrMsgClk) = 
+    void (*ClockStateMachine[ N_CLK_STATES ]) (APP_MsgTypeDef *PtrMsgClk) = 
     {
         Update_Time,
         Update_Date,
@@ -123,7 +123,7 @@ void Clock_PeriodicTask( void )
 
         if ( MsgClkRead.msg < (uint8_t) N_CLK_STATES )
         {
-            (void) ClockStateMachine[ MsgClkRead.msg ]( &MsgClkRead );
+            ClockStateMachine[ MsgClkRead.msg ]( &MsgClkRead );
         }
     }
         
@@ -137,19 +137,18 @@ void Clock_PeriodicTask( void )
  * corresponding to time from the pointer to the read msg.
  * 
  * @param   PtrMsgClk [in] Pointer to the clock message read from ClkQueue.
- * 
- * @retval  Return the status of the HAL_RTC_SetTime function.
 */
-STATIC HAL_StatusTypeDef Update_Time( APP_MsgTypeDef *PtrMsgClk )
+STATIC void Update_Time( APP_MsgTypeDef *PtrMsgClk )
 {
-    HAL_StatusTypeDef retStatus = HAL_ERROR;
+    APP_MsgTypeDef nextEvent;
+    nextEvent.msg = CLOCK_MSG_DISPLAY;
 
     sTime.Hours     = PtrMsgClk->tm.tm_hour;
     sTime.Minutes   = PtrMsgClk->tm.tm_min;
     sTime.Seconds   = PtrMsgClk->tm.tm_sec;
-    retStatus = HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
 
-    return retStatus;
+    HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
+    (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
 }
 
 /**
@@ -161,22 +160,20 @@ STATIC HAL_StatusTypeDef Update_Time( APP_MsgTypeDef *PtrMsgClk )
  * 
  * @param   PtrMsgClk [in] Pointer to the clock message read from ClkQueue.
  * 
- * @retval  Return the status of the HAL_RTC_SetDate function.
- * 
  * @note    Only the last two digits of the year are used because that's how the RTC works.
 */
-STATIC HAL_StatusTypeDef Update_Date( APP_MsgTypeDef *PtrMsgClk )
+STATIC void Update_Date( APP_MsgTypeDef *PtrMsgClk )
 {
-    HAL_StatusTypeDef retStatus = HAL_ERROR;
+    APP_MsgTypeDef nextEvent;
+    nextEvent.msg = CLOCK_MSG_DISPLAY;
 
     sDate.WeekDay   = PtrMsgClk->tm.tm_wday;
     sDate.Date      = PtrMsgClk->tm.tm_mday;
     sDate.Month     = PtrMsgClk->tm.tm_mon;
     sDate.Year      = (uint8_t) ( PtrMsgClk->tm.tm_year % CENTENARY );  /*Get last two digits of the year*/
 
-    retStatus = HAL_RTC_SetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
-
-    return retStatus;
+    HAL_RTC_SetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
+    (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
 }
 
 /**
@@ -187,19 +184,17 @@ STATIC HAL_StatusTypeDef Update_Date( APP_MsgTypeDef *PtrMsgClk )
  * used to set the alarm in the RTC.
  * 
  * @param   PtrMsgClk [in] Pointer to the clock message read from ClkQueue.
- * 
- * @retval  Return the status of the HAL_RTC_SetAlarm function.
 */
-STATIC HAL_StatusTypeDef Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
+STATIC void Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
 {
-    HAL_StatusTypeDef retStatus = HAL_ERROR;
+    APP_MsgTypeDef nextEvent;
+    nextEvent.msg = CLOCK_MSG_DISPLAY;
 
     sAlarm.AlarmTime.Hours      = PtrMsgClk->tm.tm_hour;
     sAlarm.AlarmTime.Minutes    = PtrMsgClk->tm.tm_min;
 
-    retStatus = HAL_RTC_SetAlarm( &hrtc, &sAlarm, RTC_FORMAT_BIN );
-
-    return retStatus;
+    HAL_RTC_SetAlarm( &hrtc, &sAlarm, RTC_FORMAT_BIN );
+    (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
 }
 
 /**
@@ -210,21 +205,16 @@ STATIC HAL_StatusTypeDef Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
  * This information is showed through the printf function using semihosting.
  * 
  * @param   PtrMsgClk [in] Pointer to the clock message read from ClkQueue.
- * 
- * @retval  Next state, always is IDLE.
 */
-STATIC HAL_StatusTypeDef Update_Display( APP_MsgTypeDef *PtrMsgClk )
+STATIC void Update_Display( APP_MsgTypeDef *PtrMsgClk )
 {
     (void) PtrMsgClk;
-    HAL_StatusTypeDef retStatus = HAL_ERROR;
 
-    retStatus = HAL_RTC_GetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
-    retStatus |= HAL_RTC_GetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
-    retStatus |= HAL_RTC_GetAlarm( &hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN );
+    HAL_RTC_GetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
+    HAL_RTC_GetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
+    HAL_RTC_GetAlarm( &hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN );
 
     (void) printf( "Time: %d:%d:%d\n\r", sTime.Hours, sTime.Minutes, sTime.Seconds );
     (void) printf( "Date: %d/%d/%d\n\r", sDate.Date, sDate.Month, sDate.Year );
-    (void) printf( "Alarm: %d:%d\n\r", sAlarm.AlarmTime.Hours, sAlarm.AlarmTime.Minutes );
-
-    return retStatus;   
+    (void) printf( "Alarm: %d:%d\n\r", sAlarm.AlarmTime.Hours, sAlarm.AlarmTime.Minutes ); 
 }
