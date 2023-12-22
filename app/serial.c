@@ -56,11 +56,22 @@ STATIC APP_Messages Send_Error_Message( APP_CanTypeDef *SerialMsgPtr );
 /**
  * @brief Interface to initialize all required about message processing.
  * 
- * FDCAN module is initialize to work with a baudrate of 100kps to transmit and receive
+ * FDCAN module is initialize to work with a baudrate of 250kps to transmit and receive
  * standard messages, and also is configured 2 filters, one of them its a mask type and other
  * is Dual type, with 3 differents ID's.
  * Here is also configured the queue in charge of pass the messages from the CAN interrupt
  * to the state machine.
+ * The FDCAN module works with PCLK clock which has been configured to have a frequency of
+ * 32 MHz.
+ * fCAN = fPLCK / ClockDivider / NominalPrescaler
+ * fCAN = 32 MHz / 1 / 8 = 4 MHz
+ * Time quantas.
+ * Ntq = fCAN / CANbaudrate
+ * Ntq = 4 MHz / 250 kbps = 16
+ * Sample point
+ * Sp = 75%
+ * NominalTimeSeg1 = ( Ntq * (SamplePoint / 100) ) - 1 = 11
+ * NominalTimeSeg2 = Ntq - NominalTimeSeg1 - 1  = 4
 */
 void Serial_InitTask( void )
 {
@@ -74,7 +85,7 @@ void Serial_InitTask( void )
     CANHandler.Init.FrameFormat             = FDCAN_FRAME_CLASSIC;
     CANHandler.Init.ClockDivider            = FDCAN_CLOCK_DIV1;
     CANHandler.Init.TxFifoQueueMode         = FDCAN_TX_FIFO_OPERATION;
-    CANHandler.Init.NominalPrescaler        = 10;
+    CANHandler.Init.NominalPrescaler        = 8;
     CANHandler.Init.NominalSyncJumpWidth    = 1;
     CANHandler.Init.NominalTimeSeg1         = 11;
     CANHandler.Init.NominalTimeSeg2         = 4;
