@@ -27,7 +27,7 @@ AppSched_Timer timers1 [ 2 ];
 /** @brief  Scheduler with registered tasks */
 AppSched_Scheduler ScheWithTask;
 /** @brief  Task control block for ScheWithTask*/
-AppSched_Task taskSche[2];
+AppSched_Task taskSche[ 4 ];
 
 /** @brief  Scheduler with registered timers */
 AppSched_Scheduler ScheWithTimer;
@@ -41,7 +41,7 @@ AppSched_Scheduler ScheWithTimerStart;
 /** @brief  Task control block for ScheWithTimerStart*/
 AppSched_Task taskSche3[2];
 /** @brief  Timer control block for ScheWithTimerStart*/
-AppSched_Timer timersStart [ 3 ];
+AppSched_Timer timersStart [ 7 ];
 
 /** @brief  init function for registered tasks */
 void InitTask01(void)
@@ -81,12 +81,14 @@ void setUp(void)
     AppSched_initScheduler( &Sche );
 
     /*Init a scheduler with two tasks*/
-    ScheWithTask.tasks = 1;
+    ScheWithTask.tasks = 4;
     ScheWithTask.tick = 100;
     ScheWithTask.taskPtr = taskSche;
     AppSched_initScheduler( &ScheWithTask );
-    AppSched_registerTask( &ScheWithTask, NULL, Task01, 500 );
+    AppSched_registerTask( &ScheWithTask, Task02, Task01, 200 );
+    AppSched_registerTask( &ScheWithTask, NULL, Task02, 100 );
     AppSched_registerTask( &ScheWithTask, NULL, Task02, 500 );
+    AppSched_registerTask( &ScheWithTask, NULL, Task02, 1000 );
     AppSched_stopTask( &ScheWithTask, 2 );
 
     /*Init a scheduler with a timer*/
@@ -103,19 +105,23 @@ void setUp(void)
     ScheWithTimerStart.tick = 100;
     ScheWithTimerStart.taskPtr = taskSche3;
 
-    ScheWithTimerStart.timers = 3;
+    ScheWithTimerStart.timers = 7;
     ScheWithTimerStart.timerPtr = timersStart;
 
     AppSched_initScheduler( &ScheWithTimerStart );
-    AppSched_registerTimer( &ScheWithTimerStart, 200, Task01 );
-    AppSched_registerTimer( &ScheWithTimerStart, 200, NULL );
-    AppSched_registerTimer( &ScheWithTimerStart, 200, NULL );
+    AppSched_registerTimer( &ScheWithTimerStart, 100, Task01 );
+    AppSched_registerTimer( &ScheWithTimerStart, 2000, Task01 );
+    AppSched_registerTimer( &ScheWithTimerStart, 100, NULL );
+    AppSched_registerTimer( &ScheWithTimerStart, 9000, NULL );
+    AppSched_registerTimer( &ScheWithTimerStart, 100, NULL );
     AppSched_registerTask( &ScheWithTimerStart, InitTask01, Task03, 500 );
     AppSched_registerTask( &ScheWithTimerStart, NULL, Task02, 500 );
     AppSched_stopTask( &ScheWithTimerStart, 1 );
 
     AppSched_startTimer( &ScheWithTimerStart, 1 );
-    AppSched_startTimer( &ScheWithTimerStart, 2 );  
+    AppSched_startTimer( &ScheWithTimerStart, 2 );
+    AppSched_startTimer( &ScheWithTimerStart, 4 );
+    AppSched_startTimer( &ScheWithTimerStart, 5 );
 }
 
 /**
@@ -269,7 +275,7 @@ void test__AppSched_starTask__start_a_stopped_task_noValid_taskID(void)
 {
     uint8_t varRet;
 
-    varRet = AppSched_startTask( &ScheWithTask, 3 );    //this scheduler just have 2 task, timerID=3 doesn't exist
+    varRet = AppSched_startTask( &ScheWithTask, 10 );    //this scheduler just have 2 task, timerID=3 doesn't exist
 
     TEST_ASSERT_FALSE( varRet );
 }
@@ -314,7 +320,7 @@ void test__AppSched_periodTask__change_period_non_existing_task(void)
 {
     uint8_t varRet;
 
-    varRet = AppSched_periodTask( &ScheWithTask, 3, 300 );
+    varRet = AppSched_periodTask( &ScheWithTask, 10, 300 );
 
     TEST_ASSERT_FALSE(varRet);
 }
@@ -600,7 +606,7 @@ void test__AppSched_stopTimer__stop_Timer_noValid_timerID(void)
 {
     uint8_t varRet;
 
-    varRet = AppSched_stopTimer( &ScheWithTimerStart, 5 );
+    varRet = AppSched_stopTimer( &ScheWithTimerStart, 10 );
 
     TEST_ASSERT_FALSE( varRet );
 }
@@ -651,9 +657,7 @@ void test__AppSched_stopTimer__stop_Timer_valid_arguments_check_startFlag_False(
 /**
  * @brief   test AppSched_startScheduler start ScheWithTimerStart
  * 
- * 
 */
-
 void test__AppSched_startScheduler__start_scheduler_and_reach_timeout_timer( void )
 {
     HAL_GetTick_IgnoreAndReturn( 100 );
@@ -664,4 +668,22 @@ void test__AppSched_startScheduler__start_scheduler_and_reach_timeout_timer( voi
     AppSched_startScheduler( &ScheWithTimerStart );
 
     TEST_ASSERT_FALSE( ScheWithTimerStart.timerPtr[2].startFlag ); 
+}
+
+/**
+ * @brief   test AppSched_startScheduler start ScheWithTimerStart
+ * 
+*/
+void test__AppSched_startScheduler__start_scheduler_and_reach_timeout_task( void )
+{
+    HAL_GetTick_IgnoreAndReturn( 100 );
+    HAL_GetTick_IgnoreAndReturn( 200 );
+    HAL_GetTick_IgnoreAndReturn( 300 );
+    HAL_GetTick_IgnoreAndReturn( 400 );
+    HAL_GetTick_IgnoreAndReturn( 500 );
+    HAL_GetTick_IgnoreAndReturn( 600 );
+
+    numLoops = 8;
+
+    AppSched_startScheduler( &ScheWithTask );
 }

@@ -6,8 +6,8 @@
 #include "clock.h"
 #include "bsp.h"
 
-#define N_MESSAGES_CLKQUEUE     0x0Au      /*!< Number of messages in ClkQueue */
-#define CENTENARY               0x64u      /*!< Value of a centenary */
+#define N_MESSAGES_CLKQUEUE     0x14u      /*!< Number of messages in ClkQueue (20)*/
+#define CENTENARY               100u      /*!< Value of a centenary */
 
 /**
  * @brief Queue to communicate serial and clock tasks.
@@ -148,6 +148,7 @@ STATIC void Update_Time( APP_MsgTypeDef *PtrMsgClk )
     sTime.Seconds   = PtrMsgClk->tm.tm_sec;
 
     HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
+    
     (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
 }
 
@@ -173,6 +174,7 @@ STATIC void Update_Date( APP_MsgTypeDef *PtrMsgClk )
     sDate.Year      = (uint8_t) ( PtrMsgClk->tm.tm_year % CENTENARY );  /*Get last two digits of the year*/
 
     HAL_RTC_SetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
+    
     (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
 }
 
@@ -194,6 +196,7 @@ STATIC void Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
     sAlarm.AlarmTime.Minutes    = PtrMsgClk->tm.tm_min;
 
     HAL_RTC_SetAlarm( &hrtc, &sAlarm, RTC_FORMAT_BIN );
+    
     (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
 }
 
@@ -216,5 +219,6 @@ STATIC void Update_Display( APP_MsgTypeDef *PtrMsgClk )
 
     (void) printf( "Time: %d:%d:%d\n\r", sTime.Hours, sTime.Minutes, sTime.Seconds );
     (void) printf( "Date: %d/%d/%d\n\r", sDate.Date, sDate.Month, sDate.Year );
-    (void) printf( "Alarm: %d:%d\n\r", sAlarm.AlarmTime.Hours, sAlarm.AlarmTime.Minutes ); 
+    (void) printf( "Alarm: %d:%d\n\r", sAlarm.AlarmTime.Hours, sAlarm.AlarmTime.Minutes );
+
 }

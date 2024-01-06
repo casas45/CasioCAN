@@ -41,6 +41,7 @@ void HAL_MspInit( void )
     RCC_OscInitStruct.PLL.PLLP              = RCC_PLLP_DIV2;
     RCC_OscInitStruct.PLL.PLLQ              = RCC_PLLQ_DIV2;
     RCC_OscInitStruct.PLL.PLLR              = RCC_PLLR_DIV2;
+    
     RCC_OscInitStruct.LSEState              = RCC_LSE_ON;    /*enable LSE*/
     RCC_OscInitStruct.LSIState              = RCC_LSI_OFF;   /*disable LSI*/
     HAL_RCC_OscConfig( &RCC_OscInitStruct );
@@ -53,13 +54,12 @@ void HAL_MspInit( void )
     __HAL_RCC_RTCAPB_CLK_ENABLE();
 
     /* Initializes the CPU, AHB and APB buses clocks */
-    RCC_ClkInitStruct.ClockType         = RCC_CLOCKTYPE_ALL;        /* HCLK, SYSCLK and PCLK1*/
+    RCC_ClkInitStruct.ClockType         = RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_PCLK1;        /* HCLK, SYSCLK and PCLK1*/
     RCC_ClkInitStruct.SYSCLKSource      = RCC_SYSCLKSOURCE_PLLCLK;
     RCC_ClkInitStruct.AHBCLKDivider     = RCC_SYSCLK_DIV1;          /* AHB - 64 MHz */
     RCC_ClkInitStruct.APB1CLKDivider    = RCC_HCLK_DIV2;            /* APB - 32 MHz */
     HAL_RCC_ClockConfig( &RCC_ClkInitStruct, FLASH_LATENCY_2 );
 }
-
 
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
 void HAL_FDCAN_MspInit(FDCAN_HandleTypeDef *hfdcan)

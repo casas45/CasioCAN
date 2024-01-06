@@ -215,8 +215,6 @@ void test__Update_Date( void )
 }
 
 /** @brief Reference for the private function Set_Alarm.
- *  
- * @retval  Return the next state.
 */
 STATIC void Set_Alarm( APP_MsgTypeDef * );
 

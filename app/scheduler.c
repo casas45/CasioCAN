@@ -57,7 +57,7 @@ unsigned char AppSched_registerTask( AppSched_Scheduler *scheduler, void (*initP
         scheduler->taskPtr[ scheduler->tasksCount ].initFunc = initPtr;
         scheduler->taskPtr[ scheduler->tasksCount ].taskFunc = taskPtr;
         scheduler->taskPtr[ scheduler->tasksCount ].period = period;
-        scheduler->taskPtr[ scheduler->tasksCount ].elapsed = period;
+        scheduler->taskPtr[ scheduler->tasksCount ].elapsed = 0;
         scheduler->taskPtr[ scheduler->tasksCount ].runTask = TRUE;
         scheduler->tasksCount++;
 
@@ -161,10 +161,8 @@ unsigned char AppSched_periodTask( AppSched_Scheduler *scheduler, unsigned char 
 
 void AppSched_startScheduler( AppSched_Scheduler *scheduler )
 {
-    //unsigned char status = TRUE;
-
     unsigned long tickstart = HAL_GetTick(); 
-    static unsigned long countTicks = 0;  //variable to count ticks
+    static unsigned long countTicks = 1;  //variable to count ticks
 
     for (unsigned char i = 0; i < scheduler->tasksCount; i++)   //cicle for init tasks
     {
@@ -181,13 +179,13 @@ void AppSched_startScheduler( AppSched_Scheduler *scheduler )
         {
             for (unsigned char i = 0; i < scheduler->tasksCount; i++)   //run all tasks if its time
             {
-                    if ( ( scheduler->taskPtr[i].elapsed >= scheduler->taskPtr[i].period ) && ( scheduler->taskPtr[i].runTask == TRUE ) )
-                    {
-                        scheduler->taskPtr[i].taskFunc();
-                        scheduler->taskPtr[i].elapsed = 0;          //reset elapsed time
-                    }
+                scheduler->taskPtr[i].elapsed += scheduler->tick;
                 
-                scheduler->taskPtr[i].elapsed += scheduler->tick; 
+                if ( ( scheduler->taskPtr[i].elapsed >= scheduler->taskPtr[i].period ) && ( scheduler->taskPtr[i].runTask == TRUE ) )
+                {
+                    scheduler->taskPtr[i].taskFunc();
+                    scheduler->taskPtr[i].elapsed = 0;          //reset elapsed time
+                } 
             }
              
             for (unsigned char j = 0; j < scheduler->timersCount; j++)

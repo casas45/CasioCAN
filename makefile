@@ -53,6 +53,7 @@ CFLAGS += -fdiagnostics-color=always # color the output
 CFLAGS += -fomit-frame-pointer       # Don't keep the frame pointer in a register for functions that don't need one
 CFLAGS += -fverbose-asm              # Put extra commentary information in the generated assembly code
 CFLAGS += -MMD -MP
+CFLAGS += -Werror
 
 # assembler flags
 AFLAGS = $(CPU)

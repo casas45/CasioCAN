@@ -12,10 +12,11 @@
 #define TIMERS_N                1u          /*!< Number of timers registered in the scheduler */
 #define TICK_VAL                5u          /*!< Tick value to scheduler */
 #define PERIOD_SERIAL_TASK      10u         /*!< Serial task periodicity */
-#define PERIOD_CLOCK_TASK       50u         /*!< Clock task periodicity */
+#define PERIOD_CLOCK_TASK       500u        /*!< Clock task periodicity */
 #define ONE_SECOND              1000u       /*!< Value of 1000 ms*/
 #define PERIOD_HEARTBEAT_TASK   300u        /*!< Heartbeat task periodicity */
-#define PERIOD_WATHCDOG_TASK    60u         /*!< Watchdog task periodicity */
+#define PERIOD_WATHCDOG_TASK    500u        /*!< Watchdog task periodicity */
+#define WINDOW_VALUE_WWDG       125u        
 
 /**
  * @brief   Reference to semihosting function.
@@ -29,6 +30,7 @@ void Watchdog_PeriodicTask( void );
 
 AppSched_Scheduler Scheduler;
 
+/** @brief  struct to handle the WWDG*/
 static WWDG_HandleTypeDef h_watchdog;
 
 /** @brief  Variable to save the update timer ID */
@@ -61,10 +63,10 @@ int main( void )
 
     AppSched_initScheduler( &Scheduler );
     /*Register serial task*/
+    (void) AppSched_registerTask( &Scheduler, Watchdog_InitTask, Watchdog_PeriodicTask, PERIOD_WATHCDOG_TASK );
     (void) AppSched_registerTask( &Scheduler, Serial_InitTask, Serial_PeriodicTask, PERIOD_SERIAL_TASK );
     (void) AppSched_registerTask( &Scheduler, Clock_InitTask, Clock_PeriodicTask, PERIOD_CLOCK_TASK );
-    (void) AppSched_registerTask( &Scheduler, Heartbeat_InitTask, Heartbeat_PeriodicTask, PERIOD_HEARTBEAT_TASK );
-    (void) AppSched_registerTask( &Scheduler, Watchdog_InitTask, Watchdog_PeriodicTask, PERIOD_WATHCDOG_TASK );
+    (void) AppSched_registerTask( &Scheduler, Heartbeat_InitTask, Heartbeat_PeriodicTask, PERIOD_HEARTBEAT_TASK );    
 
     /*Software timer register to update time and date in display*/
     UpdateTimerID = AppSched_registerTimer( &Scheduler, ONE_SECOND, ClockUpdate_Callback );
@@ -106,17 +108,18 @@ void Heartbeat_PeriodicTask( void )
  * @brief   Funtion to initialize the Window Watchdog.
  * 
  * The WWDG is an APB peripheral, and the bus is working with a frequency of 32 MHz.
- * The WWDG timeout is calculated with this formula
- * twwdg = tpclk * 4096 * ( 2 ^ WWDG prescaler) * Window Value
- * twwdg = ( 1 / 32 MHz ) * 4096 * ( 65536 ) * 9 = 75.49 mS
  * 
+ * Max window value = (1/32MHz) * 4096 * 128 * 124 = 2031.62 ms
+ * Min window value = (1/32MHz) * 4096 * 128 * 63  = 1032.19 ms
 */
 void Watchdog_InitTask( void )
 {
+    __HAL_RCC_WWDG_CLK_ENABLE( ); 
+
     h_watchdog.Instance         = WWDG;
-    h_watchdog.Init.Prescaler   = WWDG_PRESCALER_16;
-    h_watchdog.Init.Counter     = 0x49;             /* Min Value (0x40) + 9*/
-    h_watchdog.Init.Window      = 0x49;
+    h_watchdog.Init.Prescaler   = WWDG_PRESCALER_128;
+    h_watchdog.Init.Counter     = WINDOW_VALUE_WWDG;    
+    h_watchdog.Init.Window      = WINDOW_VALUE_WWDG;
     h_watchdog.Init.EWIMode     = WWDG_EWI_DISABLE;
 
     HAL_WWDG_Init( &h_watchdog );
