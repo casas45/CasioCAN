@@ -8,12 +8,8 @@
 #include "stm32g0xx.h"
 #include <stdint.h>
 #include <string.h>
-/* cppcheck-suppress misra-c2012-21.6 ; semihosting purpose */
-#include <stdio.h>
-#include "serial.h"
-#include "scheduler.h"
 #include "queue.h"
-#include "clock.h"
+#include "scheduler.h"
 
 /**
  * @brief   Variable with external linkage that is used to configure interrupt in ints.c file.
@@ -22,6 +18,9 @@ extern FDCAN_HandleTypeDef CANHandler;
 
 /** @brief  ClockQueue external reference */
 extern AppQue_Queue ClockQueue;
+
+/** @brief  DisplayQueue external reference */
+extern AppQue_Queue DisplayQueue;
 
 /** @brief  Scheduler external reference */
 extern AppSched_Scheduler Scheduler;
@@ -86,7 +85,19 @@ typedef enum
     CLOCK_MSG_DATE,         /*!< Msg to update RTC date */
     CLOCK_MSG_ALARM,        /*!< Msg to update RTC alarm */
     CLOCK_MSG_DISPLAY,      /*!< Msg to update display */
-    N_CLK_STATES            /*!< Number of state in clock state machine*/
+    N_CLK_STATES            /*!< Number of events in clock event machine*/
 } ClkMessages;
+
+/**
+ * @enum    DisplayMessages
+ * 
+ * @brief   Enum to clasify the Display messages.
+*/
+/* cppcheck-suppress misra-c2012-2.4 ; this enum is only used to clasify the Display messages */
+typedef enum
+{
+    DISPLAY_MSG_UPDATE = 0,         /*!< Msg to update display */
+    N_DISPLAY_EVENTS                /*!< Number of events in Display event machine*/
+} DisplayMessages;
 
 #endif

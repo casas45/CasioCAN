@@ -7,26 +7,25 @@
  *
  */
 #include "bsp.h"
+#include "serial.h"
+#include "clock.h"
+#include "display.h"
 
-#define TASKS_N                 4u          /*!< Number of tasks registered in the scheduler */
+#define TASKS_N                 5u          /*!< Number of tasks registered in the scheduler */
 #define TIMERS_N                1u          /*!< Number of timers registered in the scheduler */
 #define TICK_VAL                5u          /*!< Tick value to scheduler */
 #define PERIOD_SERIAL_TASK      10u         /*!< Serial task periodicity */
-#define PERIOD_CLOCK_TASK       500u        /*!< Clock task periodicity */
+#define PERIOD_CLOCK_TASK       50u         /*!< Clock task periodicity */
 #define ONE_SECOND              1000u       /*!< Value of 1000 ms*/
 #define PERIOD_HEARTBEAT_TASK   300u        /*!< Heartbeat task periodicity */
 #define PERIOD_WATHCDOG_TASK    500u        /*!< Watchdog task periodicity */
-#define WINDOW_VALUE_WWDG       125u        
+#define WINDOW_VALUE_WWDG       125u        /*!< Watchdog window value */
+#define PERIOD_DISPLAY_TASK     100u        /*!< Display task periodicity */
 
-/**
- * @brief   Reference to semihosting function.
-*/
-extern void initialise_monitor_handles(void);
-
-void Heartbeat_InitTask( void );
-void Heartbeat_PeriodicTask( void );
-void Watchdog_InitTask( void );
-void Watchdog_PeriodicTask( void );
+static void Heartbeat_InitTask( void );
+static void Heartbeat_PeriodicTask( void );
+static void Watchdog_InitTask( void );
+static void Watchdog_PeriodicTask( void );
 
 AppSched_Scheduler Scheduler;
 
@@ -47,8 +46,6 @@ uint8_t UpdateTimerID;
  */
 int main( void )
 {
-    initialise_monitor_handles();
-    
     HAL_Init( );
     
     /*Scheduler config*/
@@ -67,6 +64,7 @@ int main( void )
     (void) AppSched_registerTask( &Scheduler, Serial_InitTask, Serial_PeriodicTask, PERIOD_SERIAL_TASK );
     (void) AppSched_registerTask( &Scheduler, Clock_InitTask, Clock_PeriodicTask, PERIOD_CLOCK_TASK );
     (void) AppSched_registerTask( &Scheduler, Heartbeat_InitTask, Heartbeat_PeriodicTask, PERIOD_HEARTBEAT_TASK );    
+    (void) AppSched_registerTask( &Scheduler, Display_InitTask, Display_PeriodicTask, PERIOD_DISPLAY_TASK );
 
     /*Software timer register to update time and date in display*/
     UpdateTimerID = AppSched_registerTimer( &Scheduler, ONE_SECOND, ClockUpdate_Callback );
@@ -83,7 +81,7 @@ int main( void )
  * This function initialize the on-board LED that is in PORTA PIN5, the selected mode is
  * output push-pull, without pull resistor. 
 */
-void Heartbeat_InitTask( void )
+static void Heartbeat_InitTask( void )
 {
     __HAL_RCC_GPIOA_CLK_ENABLE( );
     GPIO_InitTypeDef GPIO_Init_Struct;
@@ -99,7 +97,7 @@ void Heartbeat_InitTask( void )
 /**
  * @brief   Function that controls the blinking of the heartbeat LED.
 */
-void Heartbeat_PeriodicTask( void )
+static void Heartbeat_PeriodicTask( void )
 {
     HAL_GPIO_TogglePin( GPIOA, GPIO_PIN_5 );
 }
@@ -112,7 +110,7 @@ void Heartbeat_PeriodicTask( void )
  * Max window value = (1/32MHz) * 4096 * 128 * 124 = 2031.62 ms
  * Min window value = (1/32MHz) * 4096 * 128 * 63  = 1032.19 ms
 */
-void Watchdog_InitTask( void )
+static void Watchdog_InitTask( void )
 {
     __HAL_RCC_WWDG_CLK_ENABLE( ); 
 
@@ -128,7 +126,7 @@ void Watchdog_InitTask( void )
 /**
  * @brief   Function where the WWDG is refreshed.
 */
-void Watchdog_PeriodicTask( void )
+static void Watchdog_PeriodicTask( void )
 {
     HAL_WWDG_Refresh( &h_watchdog );
 }
