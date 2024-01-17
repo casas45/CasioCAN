@@ -1,7 +1,7 @@
 /**
  * @file    test_clock.c
  * 
- * @brief   Unit tests for clock state machine.
+ * @brief   Unit tests for clock event machine.
 */
 #include "unity.h"
 #include "bsp.h"
@@ -19,6 +19,11 @@ AppSched_Scheduler Scheduler;
  * @brief   reference to the timer ID.
 */
 uint8_t UpdateTimerID;
+
+/**
+ * @brief   reference to the DisplayQueue.
+*/
+AppQue_Queue DisplayQueue;
 
 /**
  * @brief   Function that runs before any unit test.
@@ -154,6 +159,7 @@ void test__Clock_PeriodicTask__display_msg_case_DISPLAY( void )
     HAL_RTC_GetTime_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetDate_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetAlarm_ExpectAnyArgsAndReturn( HAL_OK );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
     Clock_PeriodicTask( );
 }
@@ -234,18 +240,19 @@ void test__Set_Alarm( void )
 /** 
  * @brief Reference for the private function Update_Display 
 */
-STATIC void Update_Display( APP_MsgTypeDef * );
+STATIC void Send_Display_Msg( APP_MsgTypeDef * );
 
 /**
- * @brief   test Update_Display function.
+ * @brief   test Send_Display_Msg function.
 */
-void test__Update_Display( void )
+void test__Send_Display_Msg( void )
 {
     APP_MsgTypeDef msgReceived = {0};
 
     HAL_RTC_GetTime_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetDate_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetAlarm_ExpectAnyArgsAndReturn( HAL_OK );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    Update_Display( &msgReceived );
+    Send_Display_Msg( &msgReceived );
 }

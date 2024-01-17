@@ -63,8 +63,8 @@ void Clock_InitTask( void )
     HAL_RTC_Init( &hrtc );
 
     /*set Time */
-    sTime.Hours     = 0x12;
-    sTime.Minutes   = 0x10;
+    sTime.Hours     = 0x23;
+    sTime.Minutes   = 0x59;
     sTime.Seconds   = 0x45;
     HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BCD );
 
@@ -231,5 +231,5 @@ STATIC void Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
     updateMsg.tm.tm_wday    = sDate.WeekDay;
 
     /*Write to the display queue*/
-    (void) AppQueue_writeData( &DisplayQueue, &updateMsg );
+    (void) HIL_QUEUE_writeDataISR( &DisplayQueue, &updateMsg );
 }

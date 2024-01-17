@@ -18,9 +18,9 @@ AppQue_Queue DisplayQueue;
 */
 static LCD_HandleTypeDef LCD_Handler;
 
-static void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg );
-static void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds );
-static void DateString( char *string, uint8_t month, uint8_t day, uint16_t year, uint8_t weekday );
+STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg );
+STATIC void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds );
+STATIC void DateString( char *string, uint8_t month, uint8_t day, uint16_t year, uint8_t weekday );
 
 /**
  * @brief   Initialize all required to work with the LCD.
@@ -78,11 +78,11 @@ void Display_PeriodicTask( void )
         UpdateDisplay
     };
 
-    APP_MsgTypeDef readMsg;
+    APP_MsgTypeDef readMsg = {0};
 
-    while ( AppQueue_isQueueEmpty( &DisplayQueue ) == FALSE )
+    while ( HIL_QUEUE_isQueueEmptyISR( &DisplayQueue ) == FALSE )
     {
-        (void) AppQueue_readData( &DisplayQueue, &readMsg );
+        (void) HIL_QUEUE_readDataISR( &DisplayQueue, &readMsg );
         
         if ( readMsg.msg < (uint8_t) N_DISPLAY_EVENTS )
         {
@@ -101,17 +101,22 @@ void Display_PeriodicTask( void )
  * arrays.
  * 
  * @param   pDisplayMsg Pointer to the read message.
+ * 
+ * @note The year that provides the RTC function only has the last two digits. It is necessary to add
+ * the value TWO_THOUSANDS to obtain a four-digit year. Please note that this assumes we are in the
+ * years 2000.
 */
-static void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
+STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
 {
     char lcd_row_0_date[ LCD_CHARACTERS ];
     char lcd_row_1_time[ LCD_CHARACTERS ];
 
-    DateString( lcd_row_0_date, pDisplayMsg->tm.tm_mon, pDisplayMsg->tm.tm_mday, pDisplayMsg->tm.tm_year, pDisplayMsg->tm.tm_wday );
+    DateString( lcd_row_0_date, pDisplayMsg->tm.tm_mon, 
+    pDisplayMsg->tm.tm_mday, ( pDisplayMsg->tm.tm_year + TWO_THOUSANDS ), pDisplayMsg->tm.tm_wday );
     TimeString( lcd_row_1_time, pDisplayMsg->tm.tm_hour, pDisplayMsg->tm.tm_min, pDisplayMsg->tm.tm_sec );
 
     (void) HEL_LCD_SetCursor( &LCD_Handler, 0u, 1u );
-    (void) HEL_LCD_String( &LCD_Handler, lcd_row_0_date );
+    (void) HEL_LCD_String( &LCD_Handler, lcd_row_0_date );  
 
     (void) HEL_LCD_SetCursor( &LCD_Handler, 1u, 3u );
     (void) HEL_LCD_String( &LCD_Handler, lcd_row_1_time );
@@ -123,7 +128,7 @@ static void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
  * This function takes the hours, minutes, and seconds as input and formats
  * them into a string in the "Hr:Mi:Se" format.
  * 
- * @param[out]   string  Pointer to the character array where the formatted time string will be stored.
+ * @param[out] string  Pointer to the character array where the formatted time string will be stored.
  * @param[in] hours The hours component of the time.
  * @param[in] minutes The minutes component of the time.
  * @param[in] seconds The seconds component of the time.
@@ -131,7 +136,7 @@ static void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
  * @note The output string must have sufficient space (at least 9 characters) to accommodate the 
  * formatted time string.
 */
-static void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds )
+STATIC void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds )
 {
     /*Format "Hr:Mi:Se" */
     string [0] = ( hours / 10u ) + UPSET_ASCII_NUM;
@@ -164,7 +169,7 @@ static void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t se
  * @note The output string must have sufficient space (at least 15 characters) to accommodate the 
  * formatted date string.
 */
-static void DateString( char *string, uint8_t month, uint8_t day, uint16_t year, uint8_t weekday )
+STATIC void DateString( char *string, uint8_t month, uint8_t day, uint16_t year, uint8_t weekday )
 {
     //Format : “Mon,dd yyyy Dw“
     const char months[ N_MONTHS ] [ MONTH_N_CHARACTERS ] = 
@@ -172,8 +177,13 @@ static void DateString( char *string, uint8_t month, uint8_t day, uint16_t year,
 
     const char wdays[ N_WDAYS ][ WDAY_N_CHARACTERS ] = { "Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do" };
 
-    /* Add "Mon," */
-    (void) strncpy( string, months[ BCD_TO_BIN( month ) - OFFSET_ARRAY ], MONTH_N_CHARACTERS );
+    /* Add "Mon," if parameter month it's 0 don't include the offset */
+    if ( month > 0u )
+    {
+        (void) strncpy( string, months[ BCD_TO_BIN( month ) - OFFSET_ARRAY ], MONTH_N_CHARACTERS );
+    }else{
+        (void) strncpy( string, months[ BCD_TO_BIN( month ) ], MONTH_N_CHARACTERS );
+    }
 
     /* Add "dd " */
     string[4u] = ( day / 10u ) + UPSET_ASCII_NUM;
@@ -187,8 +197,13 @@ static void DateString( char *string, uint8_t month, uint8_t day, uint16_t year,
     string[10u] = ( ( (year % 1000u) % 100u ) % 10u ) + UPSET_ASCII_NUM;
     string[11u] = ' ';
 
-    /* Add "Dw" */
-    (void) strncpy( &string[12], wdays[ weekday - OFFSET_ARRAY ], WDAY_N_CHARACTERS );
+    /* Add "Dw" if parameter weekday it's 0 don't include the offset */
+    if ( weekday > 0u )
+    {
+        (void) strncpy( &string[12], wdays[ weekday - OFFSET_ARRAY ], WDAY_N_CHARACTERS );
+    }else{
+        (void) strncpy( &string[12], wdays[ weekday ], WDAY_N_CHARACTERS );
+    }
 
     /* Add null character */
     string[14] = '\0';
