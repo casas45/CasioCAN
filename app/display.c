@@ -56,7 +56,7 @@ void Display_InitTask( void )
     SPI_Handler.Instance                = SPI1;
     SPI_Handler.Init.Mode               = SPI_MODE_MASTER;
     SPI_Handler.Init.Direction          = SPI_DIRECTION_1LINE;
-    SPI_Handler.Init.BaudRatePrescaler  = SPI_BAUDRATEPRESCALER_8;
+    SPI_Handler.Init.BaudRatePrescaler  = SPI_BAUDRATEPRESCALER_64;
     SPI_Handler.Init.DataSize           = SPI_DATASIZE_8BIT;
     SPI_Handler.Init.CLKPolarity        = SPI_POLARITY_HIGH;
     SPI_Handler.Init.CLKPhase           = SPI_PHASE_2EDGE;
@@ -65,6 +65,8 @@ void Display_InitTask( void )
     SPI_Handler.Init.TIMode             = SPI_TIMODE_DISABLED;
     SPI_Handler.Init.CRCCalculation     = SPI_CRCCALCULATION_DISABLED;
 
+    HAL_SPI_Init( &SPI_Handler );
+
     /*LCD Handler configuration*/
     LCD_Handler.spiHandler = &SPI_Handler;
 
@@ -72,16 +74,6 @@ void Display_InitTask( void )
 
     HEL_LCD_Backlight( &LCD_Handler, LCD_ON );
 
-
-    GPIO_InitTypeDef GPIO_InitStruct;
-    __HAL_RCC_GPIOC_CLK_ENABLE( );
-
-    GPIO_InitStruct.Mode    = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull    = GPIO_PULLUP;
-    GPIO_InitStruct.Speed   = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Pin     = GPIO_PIN_10;
-
-    HAL_GPIO_Init( GPIOC, &GPIO_InitStruct );
 }
 
 /**
@@ -89,8 +81,6 @@ void Display_InitTask( void )
 */
 void Display_PeriodicTask( void )
 {
-    HAL_GPIO_WritePin( GPIOC, GPIO_PIN_10, RESET );
-
     void (*DisplayEventMachine[ N_DISPLAY_EVENTS ])( APP_MsgTypeDef *DisplayMsg ) =
     {
         UpdateDisplay
@@ -108,8 +98,6 @@ void Display_PeriodicTask( void )
         }
         
     }
-    
-    HAL_GPIO_WritePin( GPIOC, GPIO_PIN_10, SET );
 }
 
 /**

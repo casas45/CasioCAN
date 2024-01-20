@@ -17,15 +17,13 @@
 */
 uint8_t HEL_LCD_Init( LCD_HandleTypeDef *hlcd )
 {
-    uint8_t retValue = HAL_ERROR;
+    uint8_t retValue = HAL_OK;
     uint8_t command = 0;
 
     HEL_LCD_MspInit( hlcd );
 
     HAL_GPIO_WritePin( hlcd->CsPort, hlcd->CsPin, SET );        /*CS off*/
     HAL_GPIO_WritePin( hlcd->RsPort, hlcd->RsPin, RESET );      /*RS instruction*/
-
-    retValue = HAL_SPI_Init( hlcd->spiHandler );
 
     HAL_GPIO_WritePin( hlcd->RstPort, hlcd->RstPin, RESET );    /*Reset*/
     
@@ -35,42 +33,42 @@ uint8_t HEL_LCD_Init( LCD_HandleTypeDef *hlcd )
     
     HAL_Delay( 100u );
     
-    (void) HEL_LCD_Command( hlcd, CMD_WAKEUP );
+    retValue |= HEL_LCD_Command( hlcd, CMD_WAKEUP );
     
     HAL_Delay( 2u );
 
-    (void) HEL_LCD_Command( hlcd, CMD_WAKEUP );
+    retValue |= HEL_LCD_Command( hlcd, CMD_WAKEUP );
 
-    (void) HEL_LCD_Command( hlcd, CMD_WAKEUP );
+    retValue |= HEL_LCD_Command( hlcd, CMD_WAKEUP );
 
     command = FUNCTION_SET | ( 1u << DL_POS ) | ( 1u << N_POS ) | ( 0u << DH_POS ) | ( 1u << IS_POS );
-    (void) HEL_LCD_Command( hlcd, command );
+    retValue |= HEL_LCD_Command( hlcd, command );
 
     command = OSC_FREQUENCY | ( 0u << BS_POS ) | ( 1u << F2_POS ) | ( 1u << F1_POS ) | ( 1u << F0_POS );
-    (void) HEL_LCD_Command( hlcd, command );
+    retValue |= HEL_LCD_Command( hlcd, command );
 
     command = PWR_ICON_CONTRAST | ( 0u << ION_POS ) | ( 1u << BON_POS ) | ( 1u << C5_POS ) | ( 0u << C4_POS );
-    (void) HEL_LCD_Command( hlcd, command ); 
+    retValue |= HEL_LCD_Command( hlcd, command ); 
 
     command = FOLLOWER_CONTROL | ( 1u << FON_POS ) | ( 1u << RAB2_POS ) | ( 0u << RAB1_POS ) | ( 1u << RAB0_POS );
-    (void) HEL_LCD_Command( hlcd, command ); 
+    retValue |= HEL_LCD_Command( hlcd, command ); 
     
     command = CONTRAST_SET | ( 0u << C3_POS ) | ( 0u << C2_POS ) | ( 0u << C1_POS ) | ( 0u << C0_POS );
-    (void) HEL_LCD_Command( hlcd, command );
+    retValue |= HEL_LCD_Command( hlcd, command );
 
     HAL_Delay( 100u );
 
     command = DISPLAY_ON_OFF | ( 1u << D_POS ) | ( 0u << C_POS ) | ( 0u << B_POS );
-    (void) HEL_LCD_Command( hlcd, command );
+    retValue |= HEL_LCD_Command( hlcd, command );
 
     command = ENTRY_MODE | ( 1u << I_D_POS ) | ( 0u << S_POS );
-    (void) HEL_LCD_Command( hlcd, command );
+    retValue |= HEL_LCD_Command( hlcd, command );
 
-    (void) HEL_LCD_Command( hlcd, CMD_CLEAR_DISPLAY ); 
+    retValue |= HEL_LCD_Command( hlcd, CMD_CLEAR_DISPLAY ); 
 
     HAL_Delay( 20u );
 
-    (void) HEL_LCD_Command( hlcd, SET_DDRAM_ADDRESS );  /*Set DDRAM address 0x00*/
+    retValue |= kHEL_LCD_Command( hlcd, SET_DDRAM_ADDRESS );  /*Set DDRAM address 0x00*/
 
     return retValue;
 }
@@ -183,12 +181,12 @@ uint8_t HEL_LCD_SetCursor( LCD_HandleTypeDef *hlcd, uint8_t row, uint8_t col )
 
     if ( col > MAX_COL )        /*set col to 0 if it's greater than 15*/
     {
-        command = COL_1;
+        command = COL_0;
     }
     
-    if( row > LINE_1 )          /*upset to indicate that is the second row*/
+    if( row > ROW_0 )          /*upset to indicate that is the second row*/
     {
-        command += SET_CURSOR_LINE_2;
+        command += SET_CURSOR_ROW_1;
     }
 
     command |= SET_DDRAM_ADDRESS;   /*add the specific bit to the command*/
@@ -233,7 +231,7 @@ void HEL_LCD_Backlight( LCD_HandleTypeDef *hlcd, uint8_t state )
  * @brief   Adjust LCD contrast level.
  * 
  * This function adjust the LCD contrast using the function HEL_LCD_Command to send the value provided
- * that will be set, there are 16 different levels, which are define in LCD_contrast_levels.
+ * that will be set, there are 16 different levels from 0 to 15.
  * 
  * @param hlcd Pointer to the LCD handle structure.
  * @param contrast The contrast level to be set. Should be in the range LCD_CONTRAST_LVL_1 to 
@@ -247,6 +245,7 @@ uint8_t HEL_LCD_Contrast( LCD_HandleTypeDef *hlcd, uint8_t contrast )
 
     if ( ( contrast >= LCD_CONTRAST_1 ) && ( contrast <= LCD_CONTRAST_16 ) )
     {
+        contrast |= CONTRAST_SET;           /*Add the command bits to set the contrast*/
         retValue = HEL_LCD_Command( hlcd, contrast );
     }
     

@@ -10,8 +10,8 @@
 #include <stdint.h>
 
 #define MAX_COL   15u     /*!< Maximum column number */
-#define LINE_1    0u      /*!< Line 1 value */
-#define COL_1     0u      /*!< Column 1 value */
+#define ROW_0     0u      /*!< Row 0 value */
+#define COL_0     0u      /*!< Column 0 value */
 
 /** 
   * @defgroup Bkl_states LCD backlight states.
@@ -34,7 +34,7 @@
   * @defgroup DDRAM_init Set DDRAM address instructions  
   @{ */
 #define SET_DDRAM_ADDRESS       0x80u   /*!< Set DDRAM address command */
-#define SET_CURSOR_LINE_2       0x40u   /*!< Upset to second line memory address */
+#define SET_CURSOR_ROW_1        0x40u   /*!< Upset to second line memory address */
 /**
   @} */
 
@@ -83,24 +83,10 @@
   @} */
 
 /** 
-  * @defgroup ContrastLevels Contrast levels (1-16).
+  * @defgroup ContrastLevels Contrast levels max and min.
   @{ */
-#define LCD_CONTRAST_1    0x70u   /*!< LCD contrast level 1 */
-#define LCD_CONTRAST_2    0x71u   /*!< LCD contrast level 2 */
-#define LCD_CONTRAST_3    0x72u   /*!< LCD contrast level 3 */
-#define LCD_CONTRAST_4    0x73u   /*!< LCD contrast level 4 */
-#define LCD_CONTRAST_5    0x74u   /*!< LCD contrast level 5 */
-#define LCD_CONTRAST_6    0x75u   /*!< LCD contrast level 6 */
-#define LCD_CONTRAST_7    0x76u   /*!< LCD contrast level 7 */
-#define LCD_CONTRAST_8    0x77u   /*!< LCD contrast level 8 */
-#define LCD_CONTRAST_9    0x78u   /*!< LCD contrast level 9 */
-#define LCD_CONTRAST_10   0x79u   /*!< LCD contrast level 10 */
-#define LCD_CONTRAST_11   0x7Au   /*!< LCD contrast level 11 */
-#define LCD_CONTRAST_12   0x7Bu   /*!< LCD contrast level 12 */
-#define LCD_CONTRAST_13   0x7Cu   /*!< LCD contrast level 13 */
-#define LCD_CONTRAST_14   0x7Du   /*!< LCD contrast level 14 */
-#define LCD_CONTRAST_15   0x7Eu   /*!< LCD contrast level 15 */
-#define LCD_CONTRAST_16   0x7Fu   /*!< LCD contrast level 16 */
+#define LCD_CONTRAST_1    0x00u   /*!< LCD contrast level 1 */
+#define LCD_CONTRAST_16   0x0Fu   /*!< LCD contrast level 16 */
 /**
   @} */ 
 
