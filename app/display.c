@@ -8,6 +8,11 @@
 
 #define BCD_TO_BIN( x ) ( ( ( (x) >> 4u ) * 10u ) + ( (x) & 0x0Fu ) ) /*!< Macro to conver BCD data to an integer */
 
+#define GET_UNITS( x ) ( (x) % 10u )                        /*!< Operation to get the units of x */
+#define GET_TENS( x ) ( ( (x) % 100u ) / 10u )              /*!< Operation to get the tens of x */
+#define GET_HUNDREDS(x) ( ( (x) % 1000u ) / 100u )          /*!< Operation to get the hundreds of x */
+#define GET_THOUSANDS(x) ( ( (x) % 10000u ) / 1000u )       /*!< Operation to get the thousands of x */
+
 /**
  * @brief Queue to communicate clock and display tasks.
 */
@@ -66,6 +71,17 @@ void Display_InitTask( void )
     (void) HEL_LCD_Init( &LCD_Handler );
 
     HEL_LCD_Backlight( &LCD_Handler, LCD_ON );
+
+
+    GPIO_InitTypeDef GPIO_InitStruct;
+    __HAL_RCC_GPIOC_CLK_ENABLE( );
+
+    GPIO_InitStruct.Mode    = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull    = GPIO_PULLUP;
+    GPIO_InitStruct.Speed   = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Pin     = GPIO_PIN_10;
+
+    HAL_GPIO_Init( GPIOC, &GPIO_InitStruct );
 }
 
 /**
@@ -73,6 +89,8 @@ void Display_InitTask( void )
 */
 void Display_PeriodicTask( void )
 {
+    HAL_GPIO_WritePin( GPIOC, GPIO_PIN_10, RESET );
+
     void (*DisplayEventMachine[ N_DISPLAY_EVENTS ])( APP_MsgTypeDef *DisplayMsg ) =
     {
         UpdateDisplay
@@ -91,6 +109,7 @@ void Display_PeriodicTask( void )
         
     }
     
+    HAL_GPIO_WritePin( GPIOC, GPIO_PIN_10, SET );
 }
 
 /**
@@ -111,8 +130,9 @@ STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
     char lcd_row_0_date[ LCD_CHARACTERS ];
     char lcd_row_1_time[ LCD_CHARACTERS ];
 
-    DateString( lcd_row_0_date, pDisplayMsg->tm.tm_mon, 
+    DateString( lcd_row_0_date, BCD_TO_BIN( pDisplayMsg->tm.tm_mon ), 
     pDisplayMsg->tm.tm_mday, ( pDisplayMsg->tm.tm_year + TWO_THOUSANDS ), pDisplayMsg->tm.tm_wday );
+    
     TimeString( lcd_row_1_time, pDisplayMsg->tm.tm_hour, pDisplayMsg->tm.tm_min, pDisplayMsg->tm.tm_sec );
 
     (void) HEL_LCD_SetCursor( &LCD_Handler, 0u, 1u );
@@ -139,16 +159,16 @@ STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
 STATIC void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds )
 {
     /*Format "Hr:Mi:Se" */
-    string [0] = ( hours / 10u ) + UPSET_ASCII_NUM;
-    string [1] = ( hours % 10u )+ UPSET_ASCII_NUM;
+    string [0] = GET_TENS( hours ) + UPSET_ASCII_NUM;
+    string [1] = GET_UNITS( hours ) + UPSET_ASCII_NUM;
     string [2] = ':';
 
-    string [3] =  ( minutes / 10u ) + UPSET_ASCII_NUM;
-    string [4] = ( minutes % 10u ) + UPSET_ASCII_NUM;
+    string [3] = GET_TENS( minutes ) + UPSET_ASCII_NUM;
+    string [4] = GET_UNITS( minutes ) + UPSET_ASCII_NUM;
     string [5] = ':';
 
-    string [6] = ( seconds / 10u ) + UPSET_ASCII_NUM;
-    string [7] = ( seconds % 10u ) + UPSET_ASCII_NUM;
+    string [6] = GET_TENS( seconds ) + UPSET_ASCII_NUM;
+    string [7] = GET_UNITS( seconds ) + UPSET_ASCII_NUM;
 
     /* Add null character */
     string [8] = '\0';
@@ -177,27 +197,27 @@ STATIC void DateString( char *string, uint8_t month, uint8_t day, uint16_t year,
 
     const char wdays[ N_WDAYS ][ WDAY_N_CHARACTERS ] = { "Lu", "Ma", "Mi", "Ju", "Vi", "Sa", "Do" };
 
-    /* Add "Mon," if parameter month it's 0 don't include the offset */
+    /* Add "Mon," if the parameter month it's 0 the offset isn't used */
     if ( month > 0u )
     {
-        (void) strncpy( string, months[ BCD_TO_BIN( month ) - OFFSET_ARRAY ], MONTH_N_CHARACTERS );
+        (void) strncpy( string, months[ month - OFFSET_ARRAY ], MONTH_N_CHARACTERS );
     }else{
-        (void) strncpy( string, months[ BCD_TO_BIN( month ) ], MONTH_N_CHARACTERS );
+        (void) strncpy( string, months[ month ], MONTH_N_CHARACTERS );
     }
 
     /* Add "dd " */
-    string[4u] = ( day / 10u ) + UPSET_ASCII_NUM;
-    string[5u] = ( day % 10u ) + UPSET_ASCII_NUM;
+    string[4u] = GET_TENS( day ) + UPSET_ASCII_NUM;
+    string[5u] = GET_UNITS( day ) + UPSET_ASCII_NUM;
     string[6u] = ' ';
 
-    /* Add "yyyy" */
-    string[7u]  = ( year / 1000u ) + UPSET_ASCII_NUM;
-    string[8u]  = ( ( year % 1000u ) / 100u ) + UPSET_ASCII_NUM;
-    string[9u]  = ( ( (year % 1000u) % 100u ) / 10u ) + UPSET_ASCII_NUM;
-    string[10u] = ( ( (year % 1000u) % 100u ) % 10u ) + UPSET_ASCII_NUM;
+    /* Add "yyyy " */
+    string[7u]  = GET_THOUSANDS( year ) + UPSET_ASCII_NUM;
+    string[8u]  = GET_HUNDREDS( year ) + UPSET_ASCII_NUM;
+    string[9u]  = GET_TENS( year ) + UPSET_ASCII_NUM;
+    string[10u] = GET_UNITS( year ) + UPSET_ASCII_NUM;
     string[11u] = ' ';
 
-    /* Add "Dw" if parameter weekday it's 0 don't include the offset */
+    /* Add "Dw" if the parameter weekday it's 0 the offset isn't used  */
     if ( weekday > 0u )
     {
         (void) strncpy( &string[12], wdays[ weekday - OFFSET_ARRAY ], WDAY_N_CHARACTERS );
