@@ -11,6 +11,10 @@
 #include "queue.h"
 #include "scheduler.h"
 
+#define assert_error( expr, error)      ( (expr) ? (void)0U : safe_state(( uint8_t *)__FILE__, __LINE__, (error)))
+
+extern void safe_state( uint8_t *file, uint32_t line, uint8_t error );
+
 /**
  * @brief   Variable with external linkage that is used to configure interrupt in ints.c file.
 */
@@ -99,5 +103,15 @@ typedef enum
     DISPLAY_MSG_UPDATE = 0,         /*!< Msg to update display */
     N_DISPLAY_EVENTS                /*!< Number of events in Display event machine*/
 } DisplayMessages;
+
+
+typedef enum _App_ErrorsCode
+{
+    WWDG_RET_ERROR = 1u,
+    RCC_RET_ERROR,
+    PWR_RET_ERROR,
+        
+
+} App_ErrorsCode;
 
 #endif

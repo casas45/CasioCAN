@@ -21,6 +21,7 @@
 #define PERIOD_WATHCDOG_TASK    100u        /*!< Watchdog task periodicity */
 #define WINDOW_VALUE_WWDG       127u        /*!< Watchdog window value */
 #define PERIOD_DISPLAY_TASK     100u        /*!< Display task periodicity */
+#define LEDS                    0xFFu       /*!< define to initialize the 8 LEDs */        
 
 static void Heartbeat_InitTask( void );
 static void Heartbeat_PeriodicTask( void );
@@ -131,4 +132,22 @@ static void Watchdog_InitTask( void )
 static void Watchdog_PeriodicTask( void )
 {
     HAL_WWDG_Refresh( &h_watchdog );
+}
+
+void safe_state( uint8_t *file, uint32_t line, uint8_t error )
+{
+    __disable_irq( );
+
+    GPIO_InitTypeDef GPIO_Init;
+
+    GPIO_Init.Mode      = GPIO_MODE_OUTPUT_PP;
+    GPIO_Init.Pull      = GPIO_PULLDOWN;
+    GPIO_Init.Speed     = GPIO_SPEED_FREQ_LOW;
+    GPIO_Init.Pin       = LEDS;
+
+    HAL_GPIO_Init( GPIOC, &GPIO_Init );
+
+    HAL_GPIO_WritePin( GPIOC, error, SET );
+
+    
 }
