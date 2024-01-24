@@ -101,9 +101,12 @@ void HAL_SPI_MspInit( SPI_HandleTypeDef *hspi )
     HAL_GPIO_Init( GPIOD, &GPIO_InitStruct );
 }
 
+/* cppcheck-suppress misra-c2012-8.6 ; in the hel_lcd driver its defined as weak */
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at LCD driver */
 void HEL_LCD_MspInit( LCD_HandleTypeDef *hlcd )
 {
+    (void) hlcd;
+
     GPIO_InitTypeDef GPIO_InitStruct;
 
     __HAL_RCC_GPIOB_CLK_ENABLE( );
@@ -119,16 +122,4 @@ void HEL_LCD_MspInit( LCD_HandleTypeDef *hlcd )
     GPIO_InitStruct.Pin     = GPIO_PIN_4;       /*Backlight pin*/
 
     HAL_GPIO_Init( GPIOB, &GPIO_InitStruct );
-
-    hlcd->BklPort   = GPIOB;
-    hlcd->BklPin    = GPIO_PIN_4;
-
-    hlcd->RsPort    = GPIOD;
-    hlcd->RsPin     = GPIO_PIN_4;
-
-    hlcd->RstPort   = GPIOD;
-    hlcd->RstPin    = GPIO_PIN_2;
-    
-    hlcd->CsPort    = GPIOD;
-    hlcd->CsPin     = GPIO_PIN_3;
 }

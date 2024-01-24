@@ -115,7 +115,6 @@ build :
 clean :
 	rm -rf Build
 
-	$(TOOLCHAIN)-size --format=berkeley $<
 flash :
 	openocd -f board/st_nucleo_g0.cfg -c "program Build/$(TARGET).hex verify reset" -c shutdown
 

@@ -40,7 +40,6 @@ void test__HEL_LCD_Init__return_HAL_OK( void )
 {
     HAL_Delay_Ignore( );
     HAL_GPIO_WritePin_Ignore( );
-    HAL_SPI_Init_IgnoreAndReturn( HAL_OK );
     HAL_SPI_Transmit_IgnoreAndReturn( HAL_OK );
 
     uint8_t retValue = HAL_ERROR;
@@ -227,8 +226,8 @@ void test__HEL_LCD_Backlight__unknown_value_default_case( void )
 */
 void test__HEL_LCD_Contrast__value_under_LCD_CONTRAST_1_return_HAL_ERROR( void )
 {
-    HAL_Delay_Ignore( );
     HAL_GPIO_WritePin_Ignore( );
+    HAL_SPI_Transmit_IgnoreAndReturn( HAL_ERROR );
 
     uint8_t retValue = HAL_OK;
 
@@ -245,7 +244,6 @@ void test__HEL_LCD_Contrast__value_under_LCD_CONTRAST_1_return_HAL_ERROR( void )
 */
 void test__HEL_LCD_Contrast__value_over_LCD_CONTRAST_16_return_HAL_ERROR( void )
 {
-    HAL_Delay_Ignore( );
     HAL_GPIO_WritePin_Ignore( );
 
     uint8_t retValue = HAL_OK;
@@ -259,17 +257,16 @@ void test__HEL_LCD_Contrast__value_over_LCD_CONTRAST_16_return_HAL_ERROR( void )
  * @brief   Test case for HEL_LCD_Contrast returning HAL_OK.
  * 
  * This unit test utilizes the tested function trying to attempt to set a contrast of
- * LCD_CONTRAST_5 value, expecting the returned value to be HAL_OK.
+ * LCD_CONTRAST_1 value, expecting the returned value to be HAL_OK.
 */
-void test__HEL_LCD_Contrast__valid_value_LCD_CONTRAST_5_return_HAL_OK( void )
+void test__HEL_LCD_Contrast__valid_value_LCD_CONTRAST_1_return_HAL_OK( void )
 {
-    HAL_Delay_Ignore( );
     HAL_GPIO_WritePin_Ignore( );
     HAL_SPI_Transmit_IgnoreAndReturn( HAL_OK );
 
     uint8_t retValue = HAL_ERROR;
 
-    retValue = HEL_LCD_Contrast( &LCD_Handler, LCD_CONTRAST_5 );
+    retValue = HEL_LCD_Contrast( &LCD_Handler, LCD_CONTRAST_1 );
 
     TEST_ASSERT_EQUAL( retValue, HAL_OK );
 }

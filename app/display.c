@@ -70,6 +70,18 @@ void Display_InitTask( void )
     /*LCD Handler configuration*/
     LCD_Handler.spiHandler = &SPI_Handler;
 
+    LCD_Handler.BklPort   = GPIOB;
+    LCD_Handler.BklPin    = GPIO_PIN_4;
+
+    LCD_Handler.RsPort    = GPIOD;
+    LCD_Handler.RsPin     = GPIO_PIN_4;
+
+    LCD_Handler.RstPort   = GPIOD;
+    LCD_Handler.RstPin    = GPIO_PIN_2;
+    
+    LCD_Handler.CsPort    = GPIOD;
+    LCD_Handler.CsPin     = GPIO_PIN_3;
+
     (void) HEL_LCD_Init( &LCD_Handler );
 
     HEL_LCD_Backlight( &LCD_Handler, LCD_ON );

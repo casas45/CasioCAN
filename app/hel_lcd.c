@@ -5,6 +5,9 @@
 */
 #include "hel_lcd.h"
 
+#define FIRST_PART_CMDS     7u      /*!< number of commands of the first part */
+#define SECOND_PART_CMDS    10u     /*!< number of commands of the second part */
+
 /**
  * @brief   Initialization routine of the LCD.
  * 
@@ -18,7 +21,20 @@
 uint8_t HEL_LCD_Init( LCD_HandleTypeDef *hlcd )
 {
     uint8_t retValue = HAL_OK;
-    uint8_t command = 0;
+    uint8_t commands [ 10 ];
+    uint8_t i = 0u;
+
+    /* Initialization commands */
+    commands[ 0 ] = CMD_WAKEUP;
+    commands[ 1 ] = CMD_WAKEUP;
+    commands[ 2 ] = FUNCTION_SET | ( 1u << DL_POS ) | ( 1u << N_POS ) | ( 0u << DH_POS ) | ( 1u << IS_POS );
+    commands[ 3 ] = OSC_FREQUENCY | ( 0u << BS_POS ) | ( 1u << F2_POS ) | ( 1u << F1_POS ) | ( 1u << F0_POS );
+    commands[ 4 ] = PWR_ICON_CONTRAST | ( 0u << ION_POS ) | ( 1u << BON_POS ) | ( 1u << C5_POS ) | ( 0u << C4_POS );
+    commands[ 5 ] = FOLLOWER_CONTROL | ( 1u << FON_POS ) | ( 1u << RAB2_POS ) | ( 0u << RAB1_POS ) | ( 1u << RAB0_POS );
+    commands[ 6 ] = CONTRAST_SET | ( 0u << C3_POS ) | ( 0u << C2_POS ) | ( 0u << C1_POS ) | ( 0u << C0_POS );
+    commands[ 7 ] = DISPLAY_ON_OFF | ( 1u << D_POS ) | ( 0u << C_POS ) | ( 0u << B_POS );
+    commands[ 8 ] = ENTRY_MODE | ( 1u << I_D_POS ) | ( 0u << S_POS );
+    commands[ 9 ] = CMD_CLEAR_DISPLAY;
 
     HEL_LCD_MspInit( hlcd );
 
@@ -29,46 +45,34 @@ uint8_t HEL_LCD_Init( LCD_HandleTypeDef *hlcd )
     
     HAL_Delay( 2u );
 
-    HAL_GPIO_WritePin( hlcd->RstPort, hlcd->RstPin, SET );       /*clear Reset*/
+    HAL_GPIO_WritePin( hlcd->RstPort, hlcd->RstPin, SET );      /*clear Reset*/
     
-    HAL_Delay( 100u );
+    HAL_Delay( 20u );
     
-    retValue |= HEL_LCD_Command( hlcd, CMD_WAKEUP );
+    retValue = HEL_LCD_Command( hlcd, CMD_WAKEUP );
     
     HAL_Delay( 2u );
 
-    retValue |= HEL_LCD_Command( hlcd, CMD_WAKEUP );
+    while ( ( retValue == HAL_OK ) && ( i < FIRST_PART_CMDS ) )    /* send first 7 initialization commands */
+    {
+        retValue = HEL_LCD_Command( hlcd, commands[ i ] );
+        i++;
+    }
 
-    retValue |= HEL_LCD_Command( hlcd, CMD_WAKEUP );
+    HAL_Delay( 200u );
 
-    command = FUNCTION_SET | ( 1u << DL_POS ) | ( 1u << N_POS ) | ( 0u << DH_POS ) | ( 1u << IS_POS );
-    retValue |= HEL_LCD_Command( hlcd, command );
+    while( ( retValue == HAL_OK ) && ( i < SECOND_PART_CMDS ) )    /* send the last 3 initialization commands */
+    {
+        retValue = HEL_LCD_Command( hlcd, commands[ i ] );
+        i++;
+    }
 
-    command = OSC_FREQUENCY | ( 0u << BS_POS ) | ( 1u << F2_POS ) | ( 1u << F1_POS ) | ( 1u << F0_POS );
-    retValue |= HEL_LCD_Command( hlcd, command );
+    HAL_Delay( 2u );
 
-    command = PWR_ICON_CONTRAST | ( 0u << ION_POS ) | ( 1u << BON_POS ) | ( 1u << C5_POS ) | ( 0u << C4_POS );
-    retValue |= HEL_LCD_Command( hlcd, command ); 
-
-    command = FOLLOWER_CONTROL | ( 1u << FON_POS ) | ( 1u << RAB2_POS ) | ( 0u << RAB1_POS ) | ( 1u << RAB0_POS );
-    retValue |= HEL_LCD_Command( hlcd, command ); 
-    
-    command = CONTRAST_SET | ( 0u << C3_POS ) | ( 0u << C2_POS ) | ( 0u << C1_POS ) | ( 0u << C0_POS );
-    retValue |= HEL_LCD_Command( hlcd, command );
-
-    HAL_Delay( 100u );
-
-    command = DISPLAY_ON_OFF | ( 1u << D_POS ) | ( 0u << C_POS ) | ( 0u << B_POS );
-    retValue |= HEL_LCD_Command( hlcd, command );
-
-    command = ENTRY_MODE | ( 1u << I_D_POS ) | ( 0u << S_POS );
-    retValue |= HEL_LCD_Command( hlcd, command );
-
-    retValue |= HEL_LCD_Command( hlcd, CMD_CLEAR_DISPLAY ); 
-
-    HAL_Delay( 20u );
-
-    retValue |= kHEL_LCD_Command( hlcd, SET_DDRAM_ADDRESS );  /*Set DDRAM address 0x00*/
+    if( retValue == HAL_OK )     /* If the initialization routine has been executed correctly.. */
+    {
+        retValue = HEL_LCD_Command( hlcd, SET_DDRAM_ADDRESS );  /*Set DDRAM address 0x00*/
+    }
 
     return retValue;
 }
@@ -149,7 +153,7 @@ uint8_t HEL_LCD_String( LCD_HandleTypeDef *hlcd, const char *str )
 
     uint8_t i = 0u;
     
-    while ( ( i < 16u ) && ( str[ i ] != '\0' ) )
+    while ( ( i <= MAX_COL ) && ( str[ i ] != '\0' ) )
     {
         retValue |= HEL_LCD_Data( hlcd, str[ i ] );
 
@@ -177,7 +181,7 @@ uint8_t HEL_LCD_String( LCD_HandleTypeDef *hlcd, const char *str )
 uint8_t HEL_LCD_SetCursor( LCD_HandleTypeDef *hlcd, uint8_t row, uint8_t col )
 {
     uint8_t retValue = HAL_ERROR;
-    uint8_t command = col;  /*add the col number to the command to write*/
+    uint8_t command = col;      /*add the column number to the command to write*/
 
     if ( col > MAX_COL )        /*set col to 0 if it's greater than 15*/
     {
@@ -242,11 +246,13 @@ void HEL_LCD_Backlight( LCD_HandleTypeDef *hlcd, uint8_t state )
 uint8_t HEL_LCD_Contrast( LCD_HandleTypeDef *hlcd, uint8_t contrast )
 {
     uint8_t retValue = HAL_ERROR;
-
-    if ( ( contrast >= LCD_CONTRAST_1 ) && ( contrast <= LCD_CONTRAST_16 ) )
+    
+    if ( contrast <= LCD_CONTRAST_16 )
     {
-        contrast |= CONTRAST_SET;           /*Add the command bits to set the contrast*/
-        retValue = HEL_LCD_Command( hlcd, contrast );
+        uint8_t contrast_cmd = contrast;
+
+        contrast_cmd |= CONTRAST_SET;           /*Add the command bits to set the contrast*/
+        retValue = HEL_LCD_Command( hlcd, contrast_cmd );
     }
     
     return retValue;

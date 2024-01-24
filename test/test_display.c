@@ -10,6 +10,7 @@
 
 #include "mock_hel_lcd.h"
 #include "mock_queue.h"
+#include "mock_stm32g0xx_hal_spi.h"
 
 /**
  * @brief   reference to the ClockQueue.
@@ -30,6 +31,16 @@ void tearDown( void )
 {
 }
 
+/** @brief Reference for the private function UpdateDisplay. */
+void UpdateDisplay( APP_MsgTypeDef * );
+
+/** @brief Reference for the private function TimeString. */
+void TimeString( char *, uint8_t, uint8_t, uint8_t );
+
+/** @brief Reference for the private function DateString. */
+void DateString( char *, uint8_t, uint8_t, uint16_t, uint8_t );
+
+
 /**
  * @brief Test Display_InitTask function.
 */
@@ -37,6 +48,7 @@ void test__Display_InitTask( void )
 {
     AppQueue_initQueue_Ignore( );
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
+    HAL_SPI_Init_IgnoreAndReturn( HAL_OK );
     HEL_LCD_MspInit_Ignore( );
     HEL_LCD_Init_ExpectAnyArgsAndReturn( TRUE );
     HEL_LCD_Backlight_Ignore( );
@@ -96,9 +108,6 @@ void test__Display_PeriodicTask__Update_Display_no_valid_message( void )
     Display_PeriodicTask( );
 }
 
-/** @brief Reference for the private function UpdateDisplay. */
-STATIC void UpdateDisplay( APP_MsgTypeDef * );
-
 /**
  * @brief Test UpdateDisplay.
 */
@@ -123,9 +132,6 @@ void test__UpdateDisplay( void )
     UpdateDisplay( &receivedMSG );
 }
 
-/** @brief Reference for the private function TimeString. */
-STATIC void TimeString( char *, uint8_t, uint8_t, uint8_t );
-
 /**
  * @brief   Unit test of the function TimeString.
  * 
@@ -141,9 +147,6 @@ void test__TimeString__check_char_array( void )
 
     TEST_ASSERT_EQUAL_STRING_LEN( "22:58:59\0", str, 9);
 }
-
-/** @brief Reference for the private function DateString. */
-STATIC void DateString( char *, uint8_t, uint8_t, uint16_t, uint8_t );
 
 /**
  * @brief Unit test for the function DateString with correct values.

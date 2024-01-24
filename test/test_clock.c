@@ -41,6 +41,23 @@ void tearDown( void )
 
 }
 
+/** @brief Reference for the private function Update_Time. */
+void Update_Time( APP_MsgTypeDef * );
+
+/** 
+ * @brief Reference for the private function Update_Date.
+*/
+void Update_Date( APP_MsgTypeDef * );
+
+/** @brief Reference for the private function Set_Alarm.
+*/
+void Set_Alarm( APP_MsgTypeDef * );
+
+/** 
+ * @brief Reference for the private function Update_Display 
+*/
+void Send_Display_Msg( APP_MsgTypeDef * );
+
 /**
  * @brief   Function to test the Clock_InitTask function.
  * 
@@ -185,8 +202,7 @@ void test__Clock_PeriodicTask__uknown_msg_dont_run_any_function( void )
     Clock_PeriodicTask( );
 }
 
-/** @brief Reference for the private function Update_Time. */
-STATIC void Update_Time( APP_MsgTypeDef * );
+
 
 /**
  * @brief   test Update_Time function.
@@ -200,11 +216,6 @@ void test__Update_Time__return_IDLE_state( void )
 
     Update_Time( &msgReceived );
 }
-
-/** 
- * @brief Reference for the private function Update_Date.
-*/
-STATIC void Update_Date( APP_MsgTypeDef * );
 
 /**
  * @brief   test Update_Date function.
@@ -220,10 +231,6 @@ void test__Update_Date( void )
     Update_Date( &msgReceived );
 }
 
-/** @brief Reference for the private function Set_Alarm.
-*/
-STATIC void Set_Alarm( APP_MsgTypeDef * );
-
 /**
  * @brief   test Set_Alarm function.
 */
@@ -236,11 +243,6 @@ void test__Set_Alarm( void )
 
     Set_Alarm( &msgReceived );
 }
-
-/** 
- * @brief Reference for the private function Update_Display 
-*/
-STATIC void Send_Display_Msg( APP_MsgTypeDef * );
 
 /**
  * @brief   test Send_Display_Msg function.
