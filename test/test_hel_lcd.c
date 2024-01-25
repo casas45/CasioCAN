@@ -50,6 +50,25 @@ void test__HEL_LCD_Init__return_HAL_OK( void )
 }
 
 /**
+ * @brief   Test case for HEL_LCD_Init function returning HAL_ERROR.
+ * 
+ * This unit test utilizes mock functions to verify the execution of all lines within the
+ * tested function, and return an error in the first command.
+*/
+void test__HEL_LCD_Init__return_HAL_ERROR_first_command_sent( void )
+{
+    HAL_Delay_Ignore( );
+    HAL_GPIO_WritePin_Ignore( );
+    HAL_SPI_Transmit_IgnoreAndReturn( HAL_ERROR );
+
+    uint8_t retValue = HAL_ERROR;
+
+    retValue = HEL_LCD_Init( &LCD_Handler );
+
+    TEST_ASSERT_EQUAL( retValue, HAL_ERROR );
+}
+
+/**
  * @brief   Test case for HEL_LCD_Command function returning HAL_OK.
  * 
  * This unit test utilizes mock functions to verify the execution of all lines within the
