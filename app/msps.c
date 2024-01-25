@@ -1,5 +1,6 @@
 /*Archivo con la funciones de las incilaizaciones auxiliares de la libreria*/
 #include "bsp.h"
+#include "display.h"
 
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
 void HAL_MspInit( void )
@@ -79,4 +80,46 @@ void HAL_FDCAN_MspInit(FDCAN_HandleTypeDef *hfdcan)
 
     HAL_NVIC_SetPriority(TIM16_FDCAN_IT0_IRQn, 2, 0);
     HAL_NVIC_EnableIRQ(TIM16_FDCAN_IT0_IRQn);
+}
+
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
+void HAL_SPI_MspInit( SPI_HandleTypeDef *hspi )
+{
+    (void) hspi;
+
+    GPIO_InitTypeDef GPIO_InitStruct;
+
+    __HAL_RCC_SPI1_CLK_ENABLE( );
+    __HAL_RCC_GPIOD_CLK_ENABLE( );
+
+    GPIO_InitStruct.Mode        = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull        = GPIO_PULLUP;
+    GPIO_InitStruct.Speed       = GPIO_SPEED_FREQ_HIGH;
+    GPIO_InitStruct.Alternate   = GPIO_AF1_SPI1;                        /*Alternate function SPI1*/
+    GPIO_InitStruct.Pin         = GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_8; /*Pins for CLK, MISO and MOSI*/
+    
+    HAL_GPIO_Init( GPIOD, &GPIO_InitStruct );
+}
+
+/* cppcheck-suppress misra-c2012-8.6 ; in the hel_lcd driver its defined as weak */
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at LCD driver */
+void HEL_LCD_MspInit( LCD_HandleTypeDef *hlcd )
+{
+    (void) hlcd;
+
+    GPIO_InitTypeDef GPIO_InitStruct;
+
+    __HAL_RCC_GPIOB_CLK_ENABLE( );
+    __HAL_RCC_GPIOD_CLK_ENABLE( );
+
+    GPIO_InitStruct.Mode    = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull    = GPIO_PULLUP;
+    GPIO_InitStruct.Speed   = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Pin     = GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_4; /*Rst | Cs | Rs*/
+
+    HAL_GPIO_Init( GPIOD, &GPIO_InitStruct );
+
+    GPIO_InitStruct.Pin     = GPIO_PIN_4;       /*Backlight pin*/
+
+    HAL_GPIO_Init( GPIOB, &GPIO_InitStruct );
 }

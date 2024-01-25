@@ -16,7 +16,8 @@ SRCS  = main.c ints.c msps.c startup_stm32g0b1xx.s system_stm32g0xx.c
 SRCS += stm32g0xx_hal.c stm32g0xx_hal_cortex.c stm32g0xx_hal_rcc.c stm32g0xx_hal_flash.c
 SRCS += stm32g0xx_hal_gpio.c serial.c queue.c scheduler.c stm32g0xx_hal_fdcan.c
 SRCS += stm32g0xx_hal_rtc.c stm32g0xx_hal_rtc_ex.c stm32g0xx_hal_pwr.c stm32g0xx_hal_wwdg.c
-SRCS += stm32g0xx_hal_pwr_ex.c stm32g0xx_hal_rcc_ex.c clock.c
+SRCS += stm32g0xx_hal_pwr_ex.c stm32g0xx_hal_rcc_ex.c clock.c stm32g0xx_hal_spi.c
+SRCS += stm32g0xx_hal_spi_ex.c hel_lcd.c display.c
 # linker file
 LINKER = linker.ld
 # Global symbols (#defines)
@@ -91,6 +92,7 @@ all : lint build $(TARGET)
 $(TARGET) : $(addprefix Build/, $(TARGET).elf)
 	$(TOOLCHAIN)-objcopy -Oihex $< Build/$(TARGET).hex
 	$(TOOLCHAIN)-objdump -S $< > Build/$(TARGET).lst
+	$(TOOLCHAIN)-size --format=berkeley $<
 
 Build/$(TARGET).elf : $(OBJS)
 	$(TOOLCHAIN)-gcc $(LFLAGS) -T $(LINKER) -o $@ $^
@@ -113,7 +115,6 @@ build :
 clean :
 	rm -rf Build
 
-	$(TOOLCHAIN)-size --format=berkeley $<
 flash :
 	openocd -f board/st_nucleo_g0.cfg -c "program Build/$(TARGET).hex verify reset" -c shutdown
 

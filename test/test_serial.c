@@ -72,6 +72,72 @@ void tearDown( void )
 }
 
 /**
+ * @brief   Reference for private function  Serial_SingleFrameTx
+*/
+void Serial_SingleFrameTx( uint8_t*, uint8_t );
+
+/**
+ * @brief   Reference for private function  Serial_SingleFrameRx
+ * @retval  Return TRUE if its a can-tp single frame format, FALSE if it isn't.
+*/
+uint8_t Serial_SingleFrameRx( uint8_t*, uint8_t* );
+
+/**
+ * @brief   Reference for private function  Evaluate_Time_Parameters
+ * @retval  Return the event type that was writed in the queue, it can be Error or Ok.
+*/
+APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef* );
+
+/**
+ * @brief   Reference for private function  Evaluate_Date_Parameters
+ * @retval  Return the event type that was writed in the queue, it can be Error or Ok.
+*/
+APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef* );
+
+/**
+ * @brief   Reference for private fucntion  Evaluate_Alarm_Parameters
+ * @retval  Return the event type that was writed in the queue, it can be Error or Ok.
+*/
+APP_Messages Evaluate_Alarm_Parameters( APP_CanTypeDef* );
+
+/**
+ * @brief   Reference for private fucntion  Send_Ok_Message
+ * @retval  Return the event type that was writed in the queue (None).
+*/
+APP_Messages Send_Ok_Message( APP_CanTypeDef* );
+
+/**
+ * @brief   Reference for private fucntion  Send_Error_Message
+ * @retval  Return the event type that was writed in the queue (None).
+*/
+APP_Messages Send_Error_Message( APP_CanTypeDef* );
+
+/**
+ * @brief   Reference for private fucntion Validate_Date
+ * @retval  Returns TRUE when its a valid date and FALSE when it is not.
+*/
+uint8_t Validate_Date( uint8_t, uint8_t, uint16_t );
+
+/**
+ * @brief   Reference for private fucntion  Validate_LeapYear
+ * @retval  TRUE if its a leap year and FALSE if not. 
+*/
+uint8_t Validate_LeapYear( uint16_t );
+
+/**
+ * @brief   Reference for private fucntion  Validate_Time.
+ * @retval  Returns TRUE when its a valid time and FALSE if it is not.
+*/
+uint8_t Validate_Time ( uint8_t, uint8_t, uint8_t );
+
+/**
+ * @brief   Reference for private fucntion WeekDay.
+ * @retval  Return the week day (0 to 6 -> Sunday to Monday).
+*/
+uint8_t WeekDay( uint8_t, uint8_t, uint16_t );
+
+
+/**
  * @brief   Test for Serial_InitTask
  * 
  * This function uses the mock functions from FDCAN HAL library and queue.h, here there isn't something
@@ -139,11 +205,6 @@ void test__Serial_PeriodicTask__queue_with_none_msg( void )
 }
 
 /**
- * @brief   Reference for private function  Serial_SingleFrameTx
-*/
-STATIC void Serial_SingleFrameTx( uint8_t*, uint8_t );
-
-/**
  * @brief   Test for Serial_SingleFrameTx to pack a message.
  * 
  * Here is defined an uint8_t array with a payload of 7, and also is define an array with the first
@@ -177,12 +238,6 @@ void test__Serial_SingleFrameTx__pack_msg_set_size_over_7bytes( void )
 
     TEST_ASSERT_EQUAL_MEMORY_MESSAGE( data_expected, data, BYTES_CAN_MESSAGE, "Message isn't valid a CAN-TP single frame" );
 }
-
-/**
- * @brief   Reference for private function  Serial_SingleFrameRx
- * @retval  Return TRUE if its a can-tp single frame format, FALSE if it isn't.
-*/
-STATIC uint8_t Serial_SingleFrameRx( uint8_t*, uint8_t* );
 
 /**
  * @brief   test Serial_SingleFrameRx with a valid CAN-TP sf message.
@@ -280,12 +335,6 @@ void test__Serial_SingleFrameRx__unpack_msg_valid_CAN_TP_single_frame_wPayload_e
 }
 
 /**
- * @brief   Reference for private function  Evaluate_Time_Parameters
- * @retval  Return the event type that was writed in the queue, it can be Error or Ok.
-*/
-STATIC APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef* );
-
-/**
  * @brief   test Evaluate_Time_Parameters transition to OK event.
  * 
  * First its define a message with valid parameters of time in BCD format, the is used the mock
@@ -333,12 +382,6 @@ void test__Evaluate_Time_Parameters__no_valid_hour_ERROR_MSG( void )
 
     TEST_ASSERT_EQUAL( eventRet, SERIAL_MSG_ERROR );
 }
-
-/**
- * @brief   Reference for private function  Evaluate_Date_Parameters
- * @retval  Return the event type that was writed in the queue, it can be Error or Ok.
-*/
-STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef* );
 
 /**
  * @brief   test Evaluate_Date_Parameters transition to OK event.
@@ -418,12 +461,6 @@ void test__Evaluate_Date_Parameters__no_valid_date_ERROR_MSG( void )
 }
 
 /**
- * @brief   Reference for private fucntion  Evaluate_Alarm_Parameters
- * @retval  Return the event type that was writed in the queue, it can be Error or Ok.
-*/
-STATIC APP_Messages Evaluate_Alarm_Parameters( APP_CanTypeDef* );
-
-/**
  * @brief   test Evaluate_Alarm_Parameters transition to OK event.
  * 
  * First its define a message with not valid parameters of alarm in BCD format, then is used the
@@ -471,12 +508,6 @@ void test__Evaluate_Alarm_Parameters__no_valid_Alarm_ERROR_MSG( void )
 }
 
 /**
- * @brief   Reference for private fucntion  Send_Ok_Message
- * @retval  Return the event type that was writed in the queue (None).
-*/
-STATIC APP_Messages Send_Ok_Message( APP_CanTypeDef* );
-
-/**
  * @brief   test Send_Ok_Message.
  * 
  * In this function there is not a transition to another event, this test is made to know
@@ -494,12 +525,6 @@ void test__Send_Ok_Message( void )
 
     TEST_ASSERT_EQUAL( eventRet, SERIAL_MSG_NONE );
 }
-
-/**
- * @brief   Reference for private fucntion  Send_Error_Message
- * @retval  Return the event type that was writed in the queue (None).
-*/
-STATIC APP_Messages Send_Error_Message( APP_CanTypeDef* );
 
 /**
  * @brief   test Send_Error_Message.
@@ -629,12 +654,6 @@ void test__HAL_FDCAN_RxFifo0Callback__receive_first_frame_CAN_TP_msg( void )
 
     HAL_FDCAN_RxFifo0Callback( &CANHandler, FDCAN_IT_RX_FIFO0_NEW_MESSAGE );
 }
-
-/**
- * @brief   Reference for private fucntion Validate_Date
- * @retval  Returns TRUE when its a valid date and FALSE when it is not.
-*/
-STATIC uint8_t Validate_Date( uint8_t, uint8_t, uint16_t );
 
 /**
  * @brief test Validate_Date with day parameter not valid.
@@ -791,12 +810,6 @@ void test__Validate_Date__not_valid_day_leap_year_return_False( void )
 }
 
 /**
- * @brief   Reference for private fucntion  Validate_LeapYear
- * @retval  TRUE if its a leap year and FALSE if not. 
-*/
-STATIC uint8_t Validate_LeapYear( uint16_t );
-
-/**
  * @brief   test Validate_LeapYear with 2024 that it's a leap year.
  * 
  * First is defined an uint8 variable to save the value returned by the function, then the value
@@ -859,12 +872,6 @@ void test__Validate_LeapYear__2100_no_leap_year_return_false( void )
 
     TEST_ASSERT_FALSE( varRet );
 }
-
-/**
- * @brief   Reference for private fucntion  Validate_Time.
- * @retval  Returns TRUE when its a valid time and FALSE if it is not.
-*/
-STATIC unsigned char Validate_Time ( uint8_t, uint8_t, uint8_t );
 
 /**
  * @brief   test Validate_Time with all parameters valid
@@ -946,12 +953,6 @@ void test__Validate_Time__no_valid_seconds_OORH_return_False( void )
 
     TEST_ASSERT_FALSE( varRet );
 }
-
-/**
- * @brief   Reference for private fucntion WeekDay.
- * @retval  Return the week day (0 to 6 -> Sunday to Monday).
-*/
-STATIC uint8_t WeekDay( uint8_t, uint8_t, uint16_t );
 
 /**
  * @brief   test WeekDay with date 07/12/2023 thursday

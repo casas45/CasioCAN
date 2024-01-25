@@ -1,7 +1,7 @@
 /**
  * @file    test_clock.c
  * 
- * @brief   Unit tests for clock state machine.
+ * @brief   Unit tests for clock event machine.
 */
 #include "unity.h"
 #include "bsp.h"
@@ -21,6 +21,11 @@ AppSched_Scheduler Scheduler;
 uint8_t UpdateTimerID;
 
 /**
+ * @brief   reference to the DisplayQueue.
+*/
+AppQue_Queue DisplayQueue;
+
+/**
  * @brief   Function that runs before any unit test.
 */
 void setUp( void )
@@ -35,6 +40,23 @@ void tearDown( void )
 {
 
 }
+
+/** @brief Reference for the private function Update_Time. */
+void Update_Time( APP_MsgTypeDef * );
+
+/** 
+ * @brief Reference for the private function Update_Date.
+*/
+void Update_Date( APP_MsgTypeDef * );
+
+/** @brief Reference for the private function Set_Alarm.
+*/
+void Set_Alarm( APP_MsgTypeDef * );
+
+/** 
+ * @brief Reference for the private function Update_Display 
+*/
+void Send_Display_Msg( APP_MsgTypeDef * );
 
 /**
  * @brief   Function to test the Clock_InitTask function.
@@ -154,6 +176,7 @@ void test__Clock_PeriodicTask__display_msg_case_DISPLAY( void )
     HAL_RTC_GetTime_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetDate_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetAlarm_ExpectAnyArgsAndReturn( HAL_OK );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
     Clock_PeriodicTask( );
 }
@@ -179,8 +202,7 @@ void test__Clock_PeriodicTask__uknown_msg_dont_run_any_function( void )
     Clock_PeriodicTask( );
 }
 
-/** @brief Reference for the private function Update_Time. */
-STATIC void Update_Time( APP_MsgTypeDef * );
+
 
 /**
  * @brief   test Update_Time function.
@@ -194,11 +216,6 @@ void test__Update_Time__return_IDLE_state( void )
 
     Update_Time( &msgReceived );
 }
-
-/** 
- * @brief Reference for the private function Update_Date.
-*/
-STATIC void Update_Date( APP_MsgTypeDef * );
 
 /**
  * @brief   test Update_Date function.
@@ -214,10 +231,6 @@ void test__Update_Date( void )
     Update_Date( &msgReceived );
 }
 
-/** @brief Reference for the private function Set_Alarm.
-*/
-STATIC void Set_Alarm( APP_MsgTypeDef * );
-
 /**
  * @brief   test Set_Alarm function.
 */
@@ -231,21 +244,17 @@ void test__Set_Alarm( void )
     Set_Alarm( &msgReceived );
 }
 
-/** 
- * @brief Reference for the private function Update_Display 
-*/
-STATIC void Update_Display( APP_MsgTypeDef * );
-
 /**
- * @brief   test Update_Display function.
+ * @brief   test Send_Display_Msg function.
 */
-void test__Update_Display( void )
+void test__Send_Display_Msg( void )
 {
     APP_MsgTypeDef msgReceived = {0};
 
     HAL_RTC_GetTime_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetDate_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetAlarm_ExpectAnyArgsAndReturn( HAL_OK );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    Update_Display( &msgReceived );
+    Send_Display_Msg( &msgReceived );
 }

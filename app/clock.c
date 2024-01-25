@@ -6,8 +6,8 @@
 #include "clock.h"
 #include "bsp.h"
 
-#define N_MESSAGES_CLKQUEUE     0x14u      /*!< Number of messages in ClkQueue (20)*/
-#define CENTENARY               100u      /*!< Value of a centenary */
+#define N_MESSAGES_CLKQUEUE     20u      /*!< Number of messages in ClkQueue (20)*/
+#define CENTENARY               100u     /*!< Value of a centenary */
 
 /**
  * @brief Queue to communicate serial and clock tasks.
@@ -33,7 +33,7 @@ STATIC void Update_Date( APP_MsgTypeDef *PtrMsgClk );
 
 STATIC void Set_Alarm( APP_MsgTypeDef *PtrMsgClk );
 
-STATIC void Update_Display( APP_MsgTypeDef *PtrMsgClk );
+STATIC void Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk );
 
 /**
  * @brief   Function to initialize RTC module and ClkQueue.
@@ -63,15 +63,15 @@ void Clock_InitTask( void )
     HAL_RTC_Init( &hrtc );
 
     /*set Time */
-    sTime.Hours     = 0x12;
-    sTime.Minutes   = 0x10;
+    sTime.Hours     = 0x23;
+    sTime.Minutes   = 0x59;
     sTime.Seconds   = 0x45;
     HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BCD );
 
     /*set Date */
-    sDate.WeekDay   = RTC_WEEKDAY_FRIDAY;
-    sDate.Date      = 0x14;
-    sDate.Month     = RTC_MONTH_DECEMBER;
+    sDate.WeekDay   = RTC_WEEKDAY_TUESDAY;
+    sDate.Date      = 0x16;
+    sDate.Month     = RTC_MONTH_JANUARY;
     sDate.Year      = 0x23;
     HAL_RTC_SetDate( &hrtc, &sDate, RTC_FORMAT_BCD );
 
@@ -100,7 +100,7 @@ void ClockUpdate_Callback( void )
 }
 
 /**
- * @brief   Function where the state machine is implemented.
+ * @brief   Function where the event machine is implemented.
  * 
  * The state machine implementation is made througha a switch sentence where is evaluated
  * a ClkState variable that is in charge to save the next state to run.
@@ -114,7 +114,7 @@ void Clock_PeriodicTask( void )
         Update_Time,
         Update_Date,
         Set_Alarm,
-        Update_Display
+        Send_Display_Msg
     };
 
     while( ( HIL_QUEUE_isQueueEmptyISR( &ClockQueue ) == FALSE ) )
@@ -201,24 +201,35 @@ STATIC void Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
 }
 
 /**
- * @brief   Function to update the time and date in the display.
+ * @brief   Function to write an updated message in DisplayQueue.
  * 
  * This funtion get the date, time and alarm values using the structures sTime, sDate and sAlarm,
  * and the respective functions from HAL library.
- * This information is showed through the printf function using semihosting.
+ * And then that information is writed in the DisplayQueue.
  * 
  * @param   PtrMsgClk [in] Pointer to the clock message read from ClkQueue.
 */
-STATIC void Update_Display( APP_MsgTypeDef *PtrMsgClk )
+STATIC void Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
 {
     (void) PtrMsgClk;
+
+    APP_MsgTypeDef updateMsg;
+
+    updateMsg.msg = DISPLAY_MSG_UPDATE;
 
     HAL_RTC_GetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
     HAL_RTC_GetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
     HAL_RTC_GetAlarm( &hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN );
 
-    (void) printf( "Time: %d:%d:%d\n\r", sTime.Hours, sTime.Minutes, sTime.Seconds );
-    (void) printf( "Date: %d/%d/%d\n\r", sDate.Date, sDate.Month, sDate.Year );
-    (void) printf( "Alarm: %d:%d\n\r", sAlarm.AlarmTime.Hours, sAlarm.AlarmTime.Minutes );
+    updateMsg.tm.tm_hour    = sTime.Hours;
+    updateMsg.tm.tm_min     = sTime.Minutes;
+    updateMsg.tm.tm_sec     = sTime.Seconds;
 
+    updateMsg.tm.tm_mday    = sDate.Date;
+    updateMsg.tm.tm_mon     = sDate.Month;
+    updateMsg.tm.tm_year    = sDate.Year;
+    updateMsg.tm.tm_wday    = sDate.WeekDay;
+
+    /*Write to the display queue*/
+    (void) HIL_QUEUE_writeDataISR( &DisplayQueue, &updateMsg );
 }
