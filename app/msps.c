@@ -5,6 +5,8 @@
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
 void HAL_MspInit( void )
 {
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
     RCC_OscInitTypeDef        RCC_OscInitStruct = {0};
     RCC_PeriphCLKInitTypeDef  PeriphClkInitStruct = {0};
 
@@ -14,15 +16,19 @@ void HAL_MspInit( void )
     __HAL_RCC_PWR_CLK_ENABLE();
     
     /*Enable backup domain*/
-    HAL_PWREx_ControlVoltageScaling( PWR_REGULATOR_VOLTAGE_SCALE1 );
+    Status = HAL_PWREx_ControlVoltageScaling( PWR_REGULATOR_VOLTAGE_SCALE1 );
+    assert_error( Status == HAL_OK, PWR_RET_ERROR );
+
     HAL_PWR_EnableBkUpAccess();
     __HAL_RCC_LSEDRIVE_CONFIG( RCC_LSEDRIVE_LOW );
 
     /*reset previous RTC source clock*/
     PeriphClkInitStruct.PeriphClockSelection    = RCC_PERIPHCLK_RTC;
     PeriphClkInitStruct.RTCClockSelection       = RCC_RTCCLKSOURCE_NONE;
-    HAL_RCCEx_PeriphCLKConfig( &PeriphClkInitStruct );
-    
+
+    Status = HAL_RCCEx_PeriphCLKConfig( &PeriphClkInitStruct );
+    assert_error( Status == HAL_OK, PWR_RET_ERROR );
+
     /** 
      * Init the LSE oscillator and PLL
      * The PLL is configured with the HSI, M = 1 and N = 8 
@@ -45,11 +51,15 @@ void HAL_MspInit( void )
     
     RCC_OscInitStruct.LSEState              = RCC_LSE_ON;    /*enable LSE*/
     RCC_OscInitStruct.LSIState              = RCC_LSI_OFF;   /*disable LSI*/
-    HAL_RCC_OscConfig( &RCC_OscInitStruct );
+    
+    Status = HAL_RCC_OscConfig( &RCC_OscInitStruct );
+    assert_error( Status == HAL_OK, RCC_RET_ERROR ); 
 
     /*Set LSE as source clock for the RTC*/
     PeriphClkInitStruct.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
-    HAL_RCCEx_PeriphCLKConfig( &PeriphClkInitStruct );
+    
+    Status = HAL_RCCEx_PeriphCLKConfig( &PeriphClkInitStruct );
+    assert_error( Status == HAL_OK, RCC_RET_ERROR );
     
     __HAL_RCC_RTC_ENABLE();         /*Enable the clock for the RTC */
     __HAL_RCC_RTCAPB_CLK_ENABLE();
@@ -59,7 +69,9 @@ void HAL_MspInit( void )
     RCC_ClkInitStruct.SYSCLKSource      = RCC_SYSCLKSOURCE_PLLCLK;
     RCC_ClkInitStruct.AHBCLKDivider     = RCC_SYSCLK_DIV1;          /* AHB - 64 MHz */
     RCC_ClkInitStruct.APB1CLKDivider    = RCC_HCLK_DIV2;            /* APB - 32 MHz */
-    HAL_RCC_ClockConfig( &RCC_ClkInitStruct, FLASH_LATENCY_2 );
+    
+    Status = HAL_RCC_ClockConfig( &RCC_ClkInitStruct, FLASH_LATENCY_2 );
+    assert_error( Status == HAL_OK, RCC_RET_ERROR );
 }
 
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */

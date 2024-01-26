@@ -17,7 +17,7 @@ AppQue_Queue ClockQueue;
 /**
  * @brief   RTC structure
 */
-static RTC_HandleTypeDef hrtc;
+RTC_HandleTypeDef hrtc;
 
 /** @brief Struct used to set and get time in RTC */
 static RTC_TimeTypeDef sTime = {0};
@@ -46,6 +46,8 @@ STATIC void Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk );
 */
 void Clock_InitTask( void )
 {
+    HAL_StatusTypeDef Status = HAL_ERROR;
+    
     /*Clock Queue config*/
     static APP_MsgTypeDef messagesClock[ N_MESSAGES_CLKQUEUE ];
 
@@ -60,20 +62,26 @@ void Clock_InitTask( void )
     hrtc.Init.SynchPrediv    = 255;
     hrtc.Init.HourFormat     = RTC_HOURFORMAT_24;
     hrtc.Init.OutPut         = RTC_OUTPUT_DISABLE;
-    HAL_RTC_Init( &hrtc );
+
+    Status = HAL_RTC_Init( &hrtc );
+    assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
     /*set Time */
     sTime.Hours     = 0x23;
     sTime.Minutes   = 0x59;
     sTime.Seconds   = 0x45;
-    HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BCD );
+
+    Status = HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BCD );
+    assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
     /*set Date */
     sDate.WeekDay   = RTC_WEEKDAY_TUESDAY;
     sDate.Date      = 0x16;
     sDate.Month     = RTC_MONTH_JANUARY;
     sDate.Year      = 0x23;
-    HAL_RTC_SetDate( &hrtc, &sDate, RTC_FORMAT_BCD );
+    
+    Status = HAL_RTC_SetDate( &hrtc, &sDate, RTC_FORMAT_BCD );
+    assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
     /*configure Alarm*/
     sAlarm.AlarmMask            = RTC_ALARMMASK_HOURS | RTC_ALARMMASK_MINUTES;
@@ -140,6 +148,8 @@ void Clock_PeriodicTask( void )
 */
 STATIC void Update_Time( APP_MsgTypeDef *PtrMsgClk )
 {
+    HAL_StatusTypeDef Status = HAL_ERROR; 
+
     APP_MsgTypeDef nextEvent;
     nextEvent.msg = CLOCK_MSG_DISPLAY;
 
@@ -147,8 +157,9 @@ STATIC void Update_Time( APP_MsgTypeDef *PtrMsgClk )
     sTime.Minutes   = PtrMsgClk->tm.tm_min;
     sTime.Seconds   = PtrMsgClk->tm.tm_sec;
 
-    HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
-    
+    Status = HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
+    assert_error( Status == HAL_OK, RTC_RET_ERROR );
+
     (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
 }
 
@@ -165,6 +176,8 @@ STATIC void Update_Time( APP_MsgTypeDef *PtrMsgClk )
 */
 STATIC void Update_Date( APP_MsgTypeDef *PtrMsgClk )
 {
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
     APP_MsgTypeDef nextEvent;
     nextEvent.msg = CLOCK_MSG_DISPLAY;
 
@@ -173,8 +186,9 @@ STATIC void Update_Date( APP_MsgTypeDef *PtrMsgClk )
     sDate.Month     = PtrMsgClk->tm.tm_mon;
     sDate.Year      = (uint8_t) ( PtrMsgClk->tm.tm_year % CENTENARY );  /*Get last two digits of the year*/
 
-    HAL_RTC_SetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
-    
+    Status = HAL_RTC_SetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
+    assert_error( Status == HAL_OK, RTC_RET_ERROR );
+
     (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
 }
 
@@ -189,14 +203,17 @@ STATIC void Update_Date( APP_MsgTypeDef *PtrMsgClk )
 */
 STATIC void Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
 {
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
     APP_MsgTypeDef nextEvent;
     nextEvent.msg = CLOCK_MSG_DISPLAY;
 
     sAlarm.AlarmTime.Hours      = PtrMsgClk->tm.tm_hour;
     sAlarm.AlarmTime.Minutes    = PtrMsgClk->tm.tm_min;
 
-    HAL_RTC_SetAlarm( &hrtc, &sAlarm, RTC_FORMAT_BIN );
-    
+    Status = HAL_RTC_SetAlarm( &hrtc, &sAlarm, RTC_FORMAT_BIN );
+    assert_error( Status == HAL_OK, RTC_RET_ERROR );
+
     (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
 }
 
@@ -213,14 +230,21 @@ STATIC void Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
 {
     (void) PtrMsgClk;
 
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
     APP_MsgTypeDef updateMsg;
 
     updateMsg.msg = DISPLAY_MSG_UPDATE;
 
-    HAL_RTC_GetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
-    HAL_RTC_GetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
-    HAL_RTC_GetAlarm( &hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN );
-
+    Status = HAL_RTC_GetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
+    assert_error( Status == HAL_OK, RTC_RET_ERROR );
+    
+    Status = HAL_RTC_GetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
+    assert_error( Status == HAL_OK, RTC_RET_ERROR );
+    
+    Status = HAL_RTC_GetAlarm( &hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN );
+    assert_error( Status == HAL_OK, RTC_RET_ERROR );
+    
     updateMsg.tm.tm_hour    = sTime.Hours;
     updateMsg.tm.tm_min     = sTime.Minutes;
     updateMsg.tm.tm_sec     = sTime.Seconds;

@@ -75,6 +75,8 @@ STATIC APP_Messages Send_Error_Message( APP_CanTypeDef *SerialMsgPtr );
 */
 void Serial_InitTask( void )
 {
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
     static APP_CanTypeDef messages[ MESSAGES_N ];   /*queue buffer*/
     /*structure to config CAN filters*/
     FDCAN_FilterTypeDef CANFilter;
@@ -90,9 +92,12 @@ void Serial_InitTask( void )
     CANHandler.Init.NominalTimeSeg1         = 11;
     CANHandler.Init.NominalTimeSeg2         = 4;
     CANHandler.Init.StdFiltersNbr           = FILTERS_N;
-    HAL_FDCAN_Init( &CANHandler );
+    
+    Status = HAL_FDCAN_Init( &CANHandler );
+    assert_error( Status == HAL_OK, FDCAN_RET_ERROR );
 
-    HAL_FDCAN_ConfigGlobalFilter( &CANHandler, FDCAN_REJECT, FDCAN_REJECT, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE );
+    Status = HAL_FDCAN_ConfigGlobalFilter( &CANHandler, FDCAN_REJECT, FDCAN_REJECT, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE );
+    assert_error( Status = HAL_OK, FDCAN_RET_ERROR );
 
     /*Config filter to ID TIME*/
     CANFilter.IdType        = FDCAN_STANDARD_ID;
@@ -101,16 +106,22 @@ void Serial_InitTask( void )
     CANFilter.FilterConfig  = FDCAN_FILTER_TO_RXFIFO0;
     CANFilter.FilterID1     = ID_TIME_MSG;
     CANFilter.FilterID2     = FILTER_MASK;
-    HAL_FDCAN_ConfigFilter( &CANHandler, &CANFilter );
+
+    Status = HAL_FDCAN_ConfigFilter( &CANHandler, &CANFilter );
+    assert_error( Status == HAL_OK, FDCAN_RET_ERROR );
+
     /*Config filter to ID DATE and ID ALARM*/
     CANFilter.FilterIndex   = 1;
     CANFilter.FilterType    = FDCAN_FILTER_DUAL;
     CANFilter.FilterID1     = ID_DATE_MSG;
     CANFilter.FilterID2     = ID_ALARM_MSG;
-    HAL_FDCAN_ConfigFilter ( &CANHandler, &CANFilter );
+    
+    Status = HAL_FDCAN_ConfigFilter ( &CANHandler, &CANFilter );
+    assert_error( Status == HAL_OK, FDCAN_RET_ERROR );
 
     /*FDCAN to normal mode*/
-    HAL_FDCAN_Start( &CANHandler );
+    Status = HAL_FDCAN_Start( &CANHandler );
+    assert_error( Status == HAL_OK, FDCAN_RET_ERROR );
 
     /*CANTxHeader configuration*/
     CANTxHeader.IdType      = FDCAN_STANDARD_ID;
@@ -119,7 +130,8 @@ void Serial_InitTask( void )
     CANTxHeader.Identifier  = RESPONSE_ID;          
     CANTxHeader.DataLength  = FDCAN_DLC_BYTES_8;
 
-    HAL_FDCAN_ActivateNotification( &CANHandler, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0 );
+    Status = HAL_FDCAN_ActivateNotification( &CANHandler, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0 );
+    assert_error( Status == HAL_OK, FDCAN_RET_ERROR );
 
     /*Queue configuration*/
     queue.Buffer    = messages;
@@ -173,11 +185,16 @@ void HAL_FDCAN_RxFifo0Callback( FDCAN_HandleTypeDef *hfdcan, uint32_t TxEventFif
 {
     (void) TxEventFifoITs;
 
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
     APP_CanTypeDef MsgCAN;
     /*structure CAN Rx Header*/
     FDCAN_RxHeaderTypeDef CANRxHeader;
+    
     /*get the msg from fifo0*/
-    HAL_FDCAN_GetRxMessage( hfdcan, FDCAN_RX_FIFO0, &CANRxHeader, MsgCAN.bytes );
+    Status = HAL_FDCAN_GetRxMessage( hfdcan, FDCAN_RX_FIFO0, &CANRxHeader, MsgCAN.bytes );
+    assert_error( Status == HAL_OK, FDCAN_RET_ERROR );
+
     /*evaluate if its a valid CAN-TP single frame*/
     if ( Serial_SingleFrameRx( MsgCAN.bytes, &MsgCAN.lenght ) == TRUE )     
     {

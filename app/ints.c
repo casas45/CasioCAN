@@ -10,7 +10,8 @@ void NMI_Handler( void )
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
 void HardFault_Handler( void )
 {
-    assert_param( 0u );
+    assert_error( 0u, HARD_FAULT_ERROR );       /* Send to the safe state */
+    assert_param( 0u ); 
 }
 
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
@@ -33,4 +34,10 @@ void SysTick_Handler( void )
 void TIM16_FDCAN_IT0_IRQHandler( void )
 {
     HAL_FDCAN_IRQHandler( &CANHandler );
+}
+
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
+void WWDG_IRQHandler( void )
+{
+    HAL_WWDG_IRQHandler( &h_watchdog );
 }

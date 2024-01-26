@@ -29,6 +29,15 @@ extern AppQue_Queue DisplayQueue;
 /** @brief  Scheduler external reference */
 extern AppSched_Scheduler Scheduler;
 
+/** @brief  LCD Handler external reference */
+extern LCD_HandleTypeDef LCD_Handler;
+
+/** @brief  RTC Handler external reference */
+extern RTC_HandleTypeDef hrtc;
+
+/** @brief  WWDG Handler external reference */
+extern WWDG_HandleTypeDef h_watchdog;
+
 extern uint8_t UpdateTimerID;
 
 /**
@@ -110,7 +119,17 @@ typedef enum _App_ErrorsCode
     WWDG_RET_ERROR = 1u,
     RCC_RET_ERROR,
     PWR_RET_ERROR,
-        
+    FDCAN_RET_ERROR,
+    RTC_RET_ERROR,
+    SPI_RET_ERROR,  
+    SCHE_RET_ERROR,
+    QUEUE_PAR_ERROR,
+    SCHE_PAR_ERROR,
+    WWDG_RESET_ERROR,
+    HARD_FAULT_ERROR,
+    
+
+
 
 } App_ErrorsCode;
 

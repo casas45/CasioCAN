@@ -26,6 +26,10 @@
  */
 void AppQueue_initQueue( AppQue_Queue *queue )
 {
+    assert_error( ( queue->Buffer != NULL ), QUEUE_PAR_ERROR );
+    assert_error( ( queue->Elements != 0u ), QUEUE_PAR_ERROR );
+    assert_error( ( queue->Size != 0u ), QUEUE_PAR_ERROR );
+    
     queue->Head = 0;      //Setting index Tail and Head to zero
     queue->Tail = 0;
     queue->Empty = TRUE;  //Empty flag to TRUE and Full flg to FALSE
@@ -48,6 +52,11 @@ void AppQueue_initQueue( AppQue_Queue *queue )
 /* cppcheck-suppress misra-c2012-8.7 ; this function can be used externally later in this project*/
 unsigned char AppQueue_writeData( AppQue_Queue *queue, const void *data )
 {   
+    assert_error( ( queue->Buffer != NULL ), QUEUE_PAR_ERROR );
+    assert_error( ( queue->Elements != 0u ), QUEUE_PAR_ERROR );
+    assert_error( ( queue->Size != 0u ), QUEUE_PAR_ERROR );
+    assert_error( ( data != NULL ), QUEUE_PAR_ERROR );
+
     unsigned char varRet = FALSE;
 
     if ( queue->Full == FALSE)
@@ -87,7 +96,7 @@ unsigned char AppQueue_writeData( AppQue_Queue *queue, const void *data )
  * @retval  Return the success of the read action, TRUE if the data was read, and FALSE in case the
  * queue is Empty.
  */
-/* cppcheck-suppress misra-c2012-8.7 ; this function can be used externally later in this project*/
+/* cppcheck-suppress misra-c2012-8.7 ; this function can be used externally later */
 unsigned char AppQueue_readData( AppQue_Queue *queue, void *data )
 {
     unsigned char varRet = FALSE;
@@ -98,7 +107,7 @@ unsigned char AppQueue_readData( AppQue_Queue *queue, void *data )
 
         /*cppcheck-suppress misra-c2012-11.5 ; 
         The function receive a void pointer to the buffer
-        if this is changed, the queue can no longer handle any type of data.*/
+        if this paremeter is changed, the queue can no longer handle any type of data.*/
         const unsigned char *ptrBuffer = (unsigned char*) queue->Buffer;
 
         (void) memcpy( data, &ptrBuffer[queue->Tail * queue->Size], queue->Size );

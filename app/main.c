@@ -31,7 +31,7 @@ static void Watchdog_PeriodicTask( void );
 AppSched_Scheduler Scheduler;
 
 /** @brief  struct to handle the WWDG*/
-static WWDG_HandleTypeDef h_watchdog;
+WWDG_HandleTypeDef h_watchdog;
 
 /** @brief  Variable to save the update timer ID */
 uint8_t UpdateTimerID;
@@ -47,6 +47,8 @@ uint8_t UpdateTimerID;
  */
 int main( void )
 {
+    HAL_StatusTypeDef Status = FALSE;
+
     HAL_Init( );
     
     /*Scheduler config*/
@@ -61,15 +63,25 @@ int main( void )
 
     AppSched_initScheduler( &Scheduler );
     /*Register serial task*/
-    (void) AppSched_registerTask( &Scheduler, Serial_InitTask, Serial_PeriodicTask, PERIOD_SERIAL_TASK );
-    (void) AppSched_registerTask( &Scheduler, Clock_InitTask, Clock_PeriodicTask, PERIOD_CLOCK_TASK );
-    (void) AppSched_registerTask( &Scheduler, Heartbeat_InitTask, Heartbeat_PeriodicTask, PERIOD_HEARTBEAT_TASK );    
-    (void) AppSched_registerTask( &Scheduler, Display_InitTask, Display_PeriodicTask, PERIOD_DISPLAY_TASK );
-    (void) AppSched_registerTask( &Scheduler, Watchdog_InitTask, Watchdog_PeriodicTask, PERIOD_WATHCDOG_TASK );
+    Status = AppSched_registerTask( &Scheduler, Serial_InitTask, Serial_PeriodicTask, PERIOD_SERIAL_TASK );
+    assert_error( Status != FALSE, SCHE_RET_ERROR );
+
+    Status = AppSched_registerTask( &Scheduler, Clock_InitTask, Clock_PeriodicTask, PERIOD_CLOCK_TASK );
+    assert_error( Status != FALSE, SCHE_RET_ERROR );
+
+    Status = AppSched_registerTask( &Scheduler, Heartbeat_InitTask, Heartbeat_PeriodicTask, PERIOD_HEARTBEAT_TASK );    
+    assert_error( Status != FALSE, SCHE_RET_ERROR );
+
+    Status = AppSched_registerTask( &Scheduler, Display_InitTask, Display_PeriodicTask, PERIOD_DISPLAY_TASK );
+    assert_error( Status != FALSE, SCHE_RET_ERROR );
+
+    Status = AppSched_registerTask( &Scheduler, Watchdog_InitTask, Watchdog_PeriodicTask, PERIOD_WATHCDOG_TASK );
+    assert_error( Status != FALSE, SCHE_RET_ERROR );
 
     /*Software timer register to update time and date in display*/
     UpdateTimerID = AppSched_registerTimer( &Scheduler, ONE_SECOND, ClockUpdate_Callback );
-    (void) AppSched_startTimer( &Scheduler, UpdateTimerID );
+    Status = AppSched_startTimer( &Scheduler, UpdateTimerID );
+    assert_error( Status == TRUE, SCHE_RET_ERROR );
 
     AppSched_startScheduler( &Scheduler );
 
@@ -115,15 +127,22 @@ static void Heartbeat_PeriodicTask( void )
 */
 static void Watchdog_InitTask( void )
 {
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
     __HAL_RCC_WWDG_CLK_ENABLE( ); 
 
     h_watchdog.Instance         = WWDG;
     h_watchdog.Init.Prescaler   = WWDG_PRESCALER_32;
     h_watchdog.Init.Counter     = WINDOW_VALUE_WWDG;    
     h_watchdog.Init.Window      = WINDOW_VALUE_WWDG;
-    h_watchdog.Init.EWIMode     = WWDG_EWI_DISABLE;
+    h_watchdog.Init.EWIMode     = WWDG_EWI_ENABLE;
 
-    HAL_WWDG_Init( &h_watchdog );
+    HAL_NVIC_SetPriority( WWDG_IRQn, 2, 0 );
+    HAL_NVIC_EnableIRQ( WWDG_IRQn );
+
+    Status = HAL_WWDG_Init( &h_watchdog );
+
+    assert_error( Status == HAL_OK, WWDG_RET_ERROR );
 }
 
 /**
@@ -131,12 +150,30 @@ static void Watchdog_InitTask( void )
 */
 static void Watchdog_PeriodicTask( void )
 {
-    HAL_WWDG_Refresh( &h_watchdog );
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
+    Status = HAL_WWDG_Refresh( &h_watchdog );
+
+    assert_error( Status == HAL_OK, WWDG_RET_ERROR );
 }
+
+/**
+ * @brief WWDG EWI callback.
+*/
+void HAL_WWDG_EarlyWakeupCallback( WWDG_HandleTypeDef *hwwdg )
+{
+    (void) hwwdg;
+
+    assert_error( 0u, WWDG_RESET_ERROR );   /* Send to the safe state */
+}
+
 
 void safe_state( uint8_t *file, uint32_t line, uint8_t error )
 {
     __disable_irq( );
+
+    (void) file;
+    (void) line;
 
     GPIO_InitTypeDef GPIO_Init;
 
@@ -147,7 +184,23 @@ void safe_state( uint8_t *file, uint32_t line, uint8_t error )
 
     HAL_GPIO_Init( GPIOC, &GPIO_Init );
 
-    HAL_GPIO_WritePin( GPIOC, error, SET );
+    HAL_GPIO_WritePin( GPIOA, GPIO_PIN_5, GPIO_PIN_RESET );     /* Heartbeat LED turn off */
+
+    HEL_LCD_Backlight( &LCD_Handler, LCD_OFF );                 /* Turn off the lcd backlight */
+
+    HAL_RTC_DeInit( &hrtc );                                    /* Deinit the RTC */
+
+    HAL_FDCAN_DeInit( &CANHandler );                            /* Deinit the FDCAN module */
+
+    HAL_GPIO_WritePin( GPIOC, error, SET );                     /* output error code using LEDs on PORTC */
+
+
+
+    while ( 1u )
+    { 
+        
+    }
+    
 
     
 }
