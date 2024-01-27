@@ -97,7 +97,7 @@ void Serial_InitTask( void )
     assert_error( Status == HAL_OK, FDCAN_RET_ERROR );
 
     Status = HAL_FDCAN_ConfigGlobalFilter( &CANHandler, FDCAN_REJECT, FDCAN_REJECT, FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE );
-    assert_error( Status = HAL_OK, FDCAN_RET_ERROR );
+    assert_error( Status == HAL_OK, FDCAN_RET_ERROR );
 
     /*Config filter to ID TIME*/
     CANFilter.IdType        = FDCAN_STANDARD_ID;

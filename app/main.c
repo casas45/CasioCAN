@@ -21,12 +21,14 @@
 #define PERIOD_WATHCDOG_TASK    100u        /*!< Watchdog task periodicity */
 #define WINDOW_VALUE_WWDG       127u        /*!< Watchdog window value */
 #define PERIOD_DISPLAY_TASK     100u        /*!< Display task periodicity */
-#define LEDS                    0xFFu       /*!< define to initialize the 8 LEDs */        
+#define LEDS                    0xFFu       /*!< define to initialize the 8 LEDs */
+#define SAFE_STATE              1u          /*!< safe state value */         
 
 static void Heartbeat_InitTask( void );
 static void Heartbeat_PeriodicTask( void );
 static void Watchdog_InitTask( void );
 static void Watchdog_PeriodicTask( void );
+void safe_state( const char *file, uint32_t line, uint8_t error );
 
 AppSched_Scheduler Scheduler;
 
@@ -35,6 +37,7 @@ WWDG_HandleTypeDef h_watchdog;
 
 /** @brief  Variable to save the update timer ID */
 uint8_t UpdateTimerID;
+
 
 /**
  * @brief   **Application entry point**
@@ -50,7 +53,7 @@ int main( void )
     HAL_StatusTypeDef Status = FALSE;
 
     HAL_Init( );
-    
+
     /*Scheduler config*/
     static AppSched_Task tasks[ TASKS_N ];
     static AppSched_Timer timers[ TIMERS_N ];
@@ -80,6 +83,7 @@ int main( void )
 
     /*Software timer register to update time and date in display*/
     UpdateTimerID = AppSched_registerTimer( &Scheduler, ONE_SECOND, ClockUpdate_Callback );
+    
     Status = AppSched_startTimer( &Scheduler, UpdateTimerID );
     assert_error( Status == TRUE, SCHE_RET_ERROR );
 
@@ -112,7 +116,7 @@ static void Heartbeat_InitTask( void )
 */
 static void Heartbeat_PeriodicTask( void )
 {
-    HAL_GPIO_TogglePin( GPIOA, GPIO_PIN_5 );
+    HAL_GPIO_TogglePin( GPIOA, GPIO_PIN_5 );    
 }
 
 /**
@@ -129,7 +133,7 @@ static void Watchdog_InitTask( void )
 {
     HAL_StatusTypeDef Status = HAL_ERROR;
 
-    __HAL_RCC_WWDG_CLK_ENABLE( ); 
+    __HAL_RCC_WWDG_CLK_ENABLE( );
 
     h_watchdog.Instance         = WWDG;
     h_watchdog.Init.Prescaler   = WWDG_PRESCALER_32;
@@ -160,47 +164,54 @@ static void Watchdog_PeriodicTask( void )
 /**
  * @brief WWDG EWI callback.
 */
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is in HAL library*/
 void HAL_WWDG_EarlyWakeupCallback( WWDG_HandleTypeDef *hwwdg )
 {
     (void) hwwdg;
 
+    HAL_WWDG_Refresh( &h_watchdog );
+    
     assert_error( 0u, WWDG_RESET_ERROR );   /* Send to the safe state */
 }
 
-
-void safe_state( uint8_t *file, uint32_t line, uint8_t error )
+/**
+ * @brief   Safe state function.
+ * 
+ * 
+*/
+void safe_state( const char *file, uint32_t line, uint8_t error )
 {
-    __disable_irq( );
+    __disable_irq();        /* Disable interrupts */
 
     (void) file;
     (void) line;
 
     GPIO_InitTypeDef GPIO_Init;
 
+    __HAL_RCC_GPIOC_CLK_ENABLE( );
+
     GPIO_Init.Mode      = GPIO_MODE_OUTPUT_PP;
-    GPIO_Init.Pull      = GPIO_PULLDOWN;
+    GPIO_Init.Pull      = GPIO_NOPULL;
     GPIO_Init.Speed     = GPIO_SPEED_FREQ_LOW;
     GPIO_Init.Pin       = LEDS;
 
     HAL_GPIO_Init( GPIOC, &GPIO_Init );
 
-    HAL_GPIO_WritePin( GPIOA, GPIO_PIN_5, GPIO_PIN_RESET );     /* Heartbeat LED turn off */
+    HAL_GPIO_WritePin( GPIOA, GPIO_PIN_5, RESET );      /* Heartbeat LED turn off */
 
-    HEL_LCD_Backlight( &LCD_Handler, LCD_OFF );                 /* Turn off the lcd backlight */
+    HEL_LCD_Backlight( &LCD_Handler, LCD_OFF );             
 
-    HAL_RTC_DeInit( &hrtc );                                    /* Deinit the RTC */
+    HAL_RTC_DeInit( &hrtc );                               
 
-    HAL_FDCAN_DeInit( &CANHandler );                            /* Deinit the FDCAN module */
+    HAL_FDCAN_DeInit( &CANHandler );                       
 
-    HAL_GPIO_WritePin( GPIOC, error, SET );                     /* output error code using LEDs on PORTC */
+    HAL_SPI_DeInit( &SPI_Handler );
 
+    HAL_GPIO_WritePin( GPIOC, error, SET );             /* output error code using LEDs on PORTC */
 
-
-    while ( 1u )
+    while ( SAFE_STATE == TRUE )
     { 
-        
+        HAL_WWDG_Refresh( &h_watchdog );
     }
-    
-
     
 }

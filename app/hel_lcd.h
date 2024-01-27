@@ -6,7 +6,8 @@
 #ifndef HEL_LCD_H_
 #define HEL_LCD_H_
 
-#include "bsp.h"
+#include "stm32g0xx.h"
+#include <string.h>
 #include <stdint.h>
 
 #define MAX_COL   15u     /*!< Maximum column number */

@@ -10,10 +10,12 @@
 #include <string.h>
 #include "queue.h"
 #include "scheduler.h"
+#include "hel_lcd.h"
 
-#define assert_error( expr, error)      ( (expr) ? (void)0U : safe_state(( uint8_t *)__FILE__, __LINE__, (error)))
+#define assert_error(expr, error)         ((expr) ? (void)0U : safe_state(__FILE__, __LINE__, (error)))
 
-extern void safe_state( uint8_t *file, uint32_t line, uint8_t error );
+/** @brief  safe_state external reference */
+extern void safe_state( const char *file, uint32_t line, uint8_t error );
 
 /**
  * @brief   Variable with external linkage that is used to configure interrupt in ints.c file.
@@ -29,14 +31,18 @@ extern AppQue_Queue DisplayQueue;
 /** @brief  Scheduler external reference */
 extern AppSched_Scheduler Scheduler;
 
-/** @brief  LCD Handler external reference */
-extern LCD_HandleTypeDef LCD_Handler;
-
 /** @brief  RTC Handler external reference */
 extern RTC_HandleTypeDef hrtc;
 
 /** @brief  WWDG Handler external reference */
 extern WWDG_HandleTypeDef h_watchdog;
+
+/** @brief  LCD Handler external reference */
+extern LCD_HandleTypeDef LCD_Handler;
+
+/** @brief  SPI Handler external reference */
+extern SPI_HandleTypeDef SPI_Handler;
+
 
 extern uint8_t UpdateTimerID;
 
@@ -126,10 +132,8 @@ typedef enum _App_ErrorsCode
     QUEUE_PAR_ERROR,
     SCHE_PAR_ERROR,
     WWDG_RESET_ERROR,
-    HARD_FAULT_ERROR,
-    
-
-
+    SCHE_BUFFER_ERROR,
+    HARD_FAULT_ERROR
 
 } App_ErrorsCode;
 

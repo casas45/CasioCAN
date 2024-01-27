@@ -99,6 +99,8 @@ unsigned char AppQueue_writeData( AppQue_Queue *queue, const void *data )
 /* cppcheck-suppress misra-c2012-8.7 ; this function can be used externally later */
 unsigned char AppQueue_readData( AppQue_Queue *queue, void *data )
 {
+    assert_error( data != NULL, QUEUE_PAR_ERROR );
+
     unsigned char varRet = FALSE;
 
     if ( queue->Empty == FALSE)

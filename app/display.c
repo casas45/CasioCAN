@@ -21,7 +21,10 @@ AppQue_Queue DisplayQueue;
 /**
  * @brief LCD Handler.
 */
-static LCD_HandleTypeDef LCD_Handler;
+LCD_HandleTypeDef LCD_Handler;
+
+/** @brief SPI Handler */
+SPI_HandleTypeDef SPI_Handler;
 
 STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg );
 STATIC void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds );
@@ -53,7 +56,6 @@ void Display_InitTask( void )
     (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
 
     /*SPI configuration*/
-    static SPI_HandleTypeDef SPI_Handler;
 
     SPI_Handler.Instance                = SPI1;
     SPI_Handler.Init.Mode               = SPI_MODE_MASTER;

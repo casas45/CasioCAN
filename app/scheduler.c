@@ -26,6 +26,10 @@
  */
 void AppSched_initScheduler( AppSched_Scheduler *scheduler)
 {
+    assert_error( scheduler->taskPtr != NULL, SCHE_PAR_ERROR );
+    assert_error( scheduler->tick > 0u, SCHE_PAR_ERROR );
+    assert_error( scheduler->tasks > 0u, SCHE_PAR_ERROR );
+
     scheduler->tasksCount = 0;
     scheduler->timersCount = 0;
 }
@@ -50,8 +54,7 @@ void AppSched_initScheduler( AppSched_Scheduler *scheduler)
  */
 unsigned char AppSched_registerTask( AppSched_Scheduler *scheduler, void (*initPtr)(void), void (*taskPtr)(void), unsigned long period )
 {
-    assert_error( ( scheduler->taskPtr != NULL ), SCHE_PAR_ERROR );
-    assert_error( ( scheduler->tasksCount < scheduler->tasks ), SCHE_PAR_ERROR );
+    assert_error( scheduler->tasksCount < scheduler->tasks, SCHE_BUFFER_ERROR );
 
     unsigned char varRetRt = 0;
 
@@ -230,8 +233,8 @@ void AppSched_startScheduler( AppSched_Scheduler *scheduler )
 */
 unsigned char AppSched_registerTimer( AppSched_Scheduler *scheduler, unsigned long timeout, void (*callbackPtr)(void) )
 {
-    assert_error( ( scheduler->timerPtr != NULL ), SCHE_PAR_ERROR );
-    assert_error( ( scheduler->timersCount < scheduler->timers ), SCHE_PAR_ERROR );
+    assert_error( scheduler->timerPtr != NULL, SCHE_BUFFER_ERROR );
+    assert_error( scheduler->timersCount < scheduler->timers, SCHE_BUFFER_ERROR );
 
     unsigned char timerID = 0;
 
