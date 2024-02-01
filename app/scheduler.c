@@ -12,6 +12,14 @@
 #include <stddef.h>
 #include "bsp.h"
 
+#define MAX_COUNT_TIM6          0xFFFFu     /*!< Maximum count value allowed by TIM6 */
+#define TIM6_PRESCALER          64000u      /*!< TIM6 prescaler value to get 1 ms period */
+#define ERROR_1MS               1u          /*!< Error range for task's periodicity */
+
+static void Scheduler_monitoring_Init( void );
+
+static uint32_t lastTick[ TASKS_N ];
+
 /**
  * @brief   Interface to initialize the scheduler.
  *
@@ -167,8 +175,13 @@ unsigned char AppSched_periodTask( AppSched_Scheduler *scheduler, unsigned char 
 
 void AppSched_startScheduler( AppSched_Scheduler *scheduler )
 {
-    unsigned long tickstart = HAL_GetTick(); 
+    unsigned long tickstart; 
     static unsigned long countTicks = 1;  //variable to count ticks
+
+    uint32_t currentTick;
+    
+    const App_ErrorsCode TasksError[ TASKS_N ] = 
+    { TASK_SERIAL_ERROR, TASK_CLOCK_ERROR, TASK_HEARTBEAT_ERROR, TASK_DISPLAY_ERROR, TASK_WWDG_ERROR };
 
     for (unsigned char i = 0; i < scheduler->tasksCount; i++)   //cicle for init tasks
     {
@@ -177,6 +190,10 @@ void AppSched_startScheduler( AppSched_Scheduler *scheduler )
             scheduler->taskPtr[i].initFunc();
         }
     }
+
+    Scheduler_monitoring_Init();
+    
+    tickstart = HAL_GetTick();  /* Get current tick value */
     
     while ( FOREVER() > 0 )
     {
@@ -187,10 +204,17 @@ void AppSched_startScheduler( AppSched_Scheduler *scheduler )
             {
                 scheduler->taskPtr[i].elapsed += scheduler->tick;
                 
-                if ( ( scheduler->taskPtr[i].elapsed >= scheduler->taskPtr[i].period ) && ( scheduler->taskPtr[i].runTask == TRUE ) )
+                if ( ( scheduler->taskPtr[i].elapsed >= ( scheduler->taskPtr[i].period ) ) && ( scheduler->taskPtr[i].runTask == TRUE ) )
                 {
+
+                    currentTick = __HAL_TIM_GetCounter( &TIM6_Handler );
+
+                    assert_error( ( currentTick - lastTick[i] ) <= ( scheduler->taskPtr[i].period + ERROR_1MS ) , TasksError[i] );
+
                     scheduler->taskPtr[i].taskFunc();
                     scheduler->taskPtr[i].elapsed = 0;          //reset elapsed time
+
+                    lastTick[ i ] = __HAL_TIM_GetCounter( &TIM6_Handler );
                 } 
             }
              
@@ -357,4 +381,44 @@ unsigned char AppSched_stopTimer( AppSched_Scheduler *scheduler, unsigned char t
     }
 
     return retStop;
+}
+
+/**
+ * @brief function where the TIM6 it's initialized.
+ * 
+ * In this application we are working with a APB prescaler of 2, then it makes the TIM6 clock
+ * frequency set to PCLK * 2, it is 64MHz. (reference maunal pag. 173).
+ * To make things easier is used a TIM6 prescaler of 64000 to get a 1 ms period.
+*/
+static void Scheduler_monitoring_Init( void )
+{
+    TIM6_Handler.Instance           = TIM6;
+    TIM6_Handler.Init.Prescaler     = TIM6_PRESCALER;
+    TIM6_Handler.Init.CounterMode   = TIM_COUNTERMODE_UP;
+    TIM6_Handler.Init.Period        = MAX_COUNT_TIM6;
+    TIM6_Handler.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    
+    HAL_NVIC_SetPriority( TIM6_DAC_LPTIM1_IRQn, 2, 0 );
+    HAL_NVIC_EnableIRQ( TIM6_DAC_LPTIM1_IRQn );
+
+    HAL_TIM_Base_Init( &TIM6_Handler );
+
+    HAL_TIM_Base_Start_IT( &TIM6_Handler );
+}
+
+/**
+ * @brief   TIM Period Elapsed Callback.
+ * 
+ * This callback reset the lastTick values of each task.
+*/
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    (void) htim;
+
+    for ( uint8_t k = 0; k < TASKS_N; k++ )
+    {
+        lastTick[k] = 0u;          
+    }
+    
 }

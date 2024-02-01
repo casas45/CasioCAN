@@ -12,9 +12,15 @@
 #include "scheduler.h"
 #include "hel_lcd.h"
 
-#define assert_error(expr, error)         ((expr) ? (void)0U : safe_state(__FILE__, __LINE__, (error)))
+#define assert_error(expr, error)           ((expr) ? (void)0U : safe_state(__FILE__, __LINE__, (error))) /*!< Macro to handle errrors */
 
-/** @brief  safe_state external reference */
+#define PERIOD_SERIAL_TASK      10u         /*!< Serial task periodicity */
+#define PERIOD_CLOCK_TASK       50u         /*!< Clock task periodicity */
+#define PERIOD_HEARTBEAT_TASK   300u        /*!< Heartbeat task periodicity */
+#define PERIOD_WATCHDOG_TASK    160u        /*!< Watchdog task periodicity */
+#define TASKS_N                 5u          /*!< Number of tasks registered in the scheduler */
+#define TIMERS_N                1u          /*!< Number of timers registered in the scheduler */
+
 extern void safe_state( const char *file, uint32_t line, uint8_t error );
 
 /**
@@ -43,7 +49,10 @@ extern LCD_HandleTypeDef LCD_Handler;
 /** @brief  SPI Handler external reference */
 extern SPI_HandleTypeDef SPI_Handler;
 
+/** @brief  TIM6 Handler external reference */
+extern TIM_HandleTypeDef TIM6_Handler;
 
+/** @brief  Update Timer ID external reference */
 extern uint8_t UpdateTimerID;
 
 /**
@@ -119,7 +128,9 @@ typedef enum
     N_DISPLAY_EVENTS                /*!< Number of events in Display event machine*/
 } DisplayMessages;
 
-
+/**
+ * @brief   Enum to clasify the application error codes.
+*/
 typedef enum _App_ErrorsCode
 {
     WWDG_RET_ERROR = 1u,
@@ -133,7 +144,17 @@ typedef enum _App_ErrorsCode
     SCHE_PAR_ERROR,
     WWDG_RESET_ERROR,
     SCHE_BUFFER_ERROR,
-    HARD_FAULT_ERROR
+    HARD_FAULT_ERROR,
+    TASK_HEARTBEAT_ERROR,
+    TASK_WWDG_ERROR,
+    TASK_SERIAL_ERROR,
+    TASK_CLOCK_ERROR,
+    TASK_DISPLAY_ERROR,
+    CAN_FUNC_ERROR,
+    SPI_FUNC_ERROR,
+    TIM_FUNC_ERROR,
+    ECC_ONE_ERROR,
+    ECC_TWO_ERROR
 
 } App_ErrorsCode;
 

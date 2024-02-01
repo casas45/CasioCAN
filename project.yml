@@ -52,6 +52,7 @@
     - app/main.c              # Ignore main file (renmove from here ig needed)
     - app/ints.c              # Do not test interrupt vectors
     - app/msps.c              # Do not test extra initlization functions
+    - app/callbacks.c
   :gcovr:
     :report_include: app/*
 
@@ -67,6 +68,7 @@
     - '(?:HAL_GPIO_EXTI_Rising_Callback\s*\(+.*?\)+)'     # For instance the callback functions
     - '(?:HAL_GPIO_EXTI_Falling_Callback\s*\(+.*?\)+)'    # For instance the callback functions
     - '(?:HAL_FDCAN_RxFifo0Callback\s*\(+.*?\)+)'    # For instance the callback functions
+    - '(?:void HAL_TIM_PeriodElapsedCallback\s*\(+.*?\)+)'
   :plugins:
     - :ignore                 # Generate <function>_Ignore and <function>_IgnoreAndReturn
     - :ignore_arg             # Generate <function>_IgnoreArg_<param_name>

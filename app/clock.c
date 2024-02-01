@@ -69,7 +69,7 @@ void Clock_InitTask( void )
     /*set Time */
     sTime.Hours     = 0x23;
     sTime.Minutes   = 0x59;
-    sTime.Seconds   = 0x45;
+    sTime.Seconds   = 0x00;
 
     Status = HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BCD );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
@@ -134,7 +134,7 @@ void Clock_PeriodicTask( void )
             ClockStateMachine[ MsgClkRead.msg ]( &MsgClkRead );
         }
     }
-        
+      
 }
 
 /**

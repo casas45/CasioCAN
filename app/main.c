@@ -11,18 +11,12 @@
 #include "clock.h"
 #include "display.h"
 
-#define TASKS_N                 5u          /*!< Number of tasks registered in the scheduler */
-#define TIMERS_N                1u          /*!< Number of timers registered in the scheduler */
 #define TICK_VAL                5u          /*!< Tick value to scheduler */
-#define PERIOD_SERIAL_TASK      10u         /*!< Serial task periodicity */
-#define PERIOD_CLOCK_TASK       50u         /*!< Clock task periodicity */
 #define ONE_SECOND              1000u       /*!< Value of 1000 ms */
-#define PERIOD_HEARTBEAT_TASK   300u        /*!< Heartbeat task periodicity */
-#define PERIOD_WATHCDOG_TASK    100u        /*!< Watchdog task periodicity */
 #define WINDOW_VALUE_WWDG       127u        /*!< Watchdog window value */
 #define PERIOD_DISPLAY_TASK     100u        /*!< Display task periodicity */
 #define LEDS                    0xFFu       /*!< define to initialize the 8 LEDs */
-#define SAFE_STATE              1u          /*!< safe state value */         
+#define SAFE_STATE              1u          /*!< safe state value */      
 
 static void Heartbeat_InitTask( void );
 static void Heartbeat_PeriodicTask( void );
@@ -38,6 +32,8 @@ WWDG_HandleTypeDef h_watchdog;
 /** @brief  Variable to save the update timer ID */
 uint8_t UpdateTimerID;
 
+/** @brief  TIM6 Handler struct */
+TIM_HandleTypeDef TIM6_Handler;
 
 /**
  * @brief   **Application entry point**
@@ -78,7 +74,7 @@ int main( void )
     Status = AppSched_registerTask( &Scheduler, Display_InitTask, Display_PeriodicTask, PERIOD_DISPLAY_TASK );
     assert_error( Status != FALSE, SCHE_RET_ERROR );
 
-    Status = AppSched_registerTask( &Scheduler, Watchdog_InitTask, Watchdog_PeriodicTask, PERIOD_WATHCDOG_TASK );
+    Status = AppSched_registerTask( &Scheduler, Watchdog_InitTask, Watchdog_PeriodicTask, PERIOD_WATCHDOG_TASK );
     assert_error( Status != FALSE, SCHE_RET_ERROR );
 
     /*Software timer register to update time and date in display*/
@@ -116,7 +112,7 @@ static void Heartbeat_InitTask( void )
 */
 static void Heartbeat_PeriodicTask( void )
 {
-    HAL_GPIO_TogglePin( GPIOA, GPIO_PIN_5 );    
+    HAL_GPIO_TogglePin( GPIOA, GPIO_PIN_5 );
 }
 
 /**
@@ -162,22 +158,14 @@ static void Watchdog_PeriodicTask( void )
 }
 
 /**
- * @brief WWDG EWI callback.
-*/
-/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is in HAL library*/
-void HAL_WWDG_EarlyWakeupCallback( WWDG_HandleTypeDef *hwwdg )
-{
-    (void) hwwdg;
-
-    HAL_WWDG_Refresh( &h_watchdog );
-    
-    assert_error( 0u, WWDG_RESET_ERROR );   /* Send to the safe state */
-}
-
-/**
  * @brief   Safe state function.
  * 
+ * Function where the used modules are disabled, output the corresponding error code using,
+ * the PORTC LEDs and enter on an infinite loop.
  * 
+ * @param   file String to indicate in which file is the error.
+ * @param   line Line where the error its detected.
+ * @param   error Error code. 
 */
 void safe_state( const char *file, uint32_t line, uint8_t error )
 {
@@ -215,3 +203,5 @@ void safe_state( const char *file, uint32_t line, uint8_t error )
     }
     
 }
+
+

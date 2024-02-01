@@ -7,6 +7,8 @@
 #ifndef SCHEDULER_H_
 #define SCHEDULER_H_
 
+#include "stdint.h"
+
 #ifndef TEST_L
 #define FOREVER() 1             /*!< MACRO defined with test purposes */  
 #else 
