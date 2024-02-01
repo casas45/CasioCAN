@@ -18,7 +18,10 @@
 
 static void Scheduler_monitoring_Init( void );
 
-static uint32_t lastTick[ TASKS_N ];
+/**
+ * @brief   array to store the lastTick value of each task.
+*/
+static uint16_t lastTick[ TASKS_N ];
 
 /**
  * @brief   Interface to initialize the scheduler.
@@ -178,7 +181,7 @@ void AppSched_startScheduler( AppSched_Scheduler *scheduler )
     unsigned long tickstart; 
     static unsigned long countTicks = 1;  //variable to count ticks
 
-    uint32_t currentTick;
+    uint16_t currentTick;
     
     const App_ErrorsCode TasksError[ TASKS_N ] = 
     { TASK_SERIAL_ERROR, TASK_CLOCK_ERROR, TASK_HEARTBEAT_ERROR, TASK_DISPLAY_ERROR, TASK_WWDG_ERROR };
@@ -410,6 +413,8 @@ static void Scheduler_monitoring_Init( void )
  * @brief   TIM Period Elapsed Callback.
  * 
  * This callback reset the lastTick values of each task.
+ * 
+ * @param   htim pointer to the TIM handle struct.
 */
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
