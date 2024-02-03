@@ -13,7 +13,8 @@
 
 #define TICK_VAL                5u          /*!< Tick value to scheduler */
 #define ONE_SECOND              1000u       /*!< Value of 1000 ms */
-#define WINDOW_VALUE_WWDG       127u        /*!< Watchdog window value */
+#define WINDOW_VALUE_WWDG       100u        /*!< Watchdog window value */
+#define COUNTER_VALUE_WWDG      127u        /*!< Watchdog counter value */
 #define PERIOD_DISPLAY_TASK     100u        /*!< Display task periodicity */
 #define LEDS                    0xFFu       /*!< define to initialize the 8 LEDs */
 #define SAFE_STATE              1u          /*!< safe state value */      
@@ -120,10 +121,12 @@ static void Heartbeat_PeriodicTask( void )
  * 
  * The WWDG is an APB peripheral, and the bus is working with a frequency of 32 MHz.
  * 
- * Max window value = (1/32MHz) * 4096 * 32 * 127 = 520.19 ms
+ * Counter value    = (1/32MHz) * 4096 * 32 * 127 = 520.19 ms
+ * Max window value = (1/32MHz) * 4096 * 32 * 100 = 409.60 ms
  * Min window value = (1/32MHz) * 4096 * 32 * 63  = 258.05 ms
  * 
- * The WWDG must be refreshed before 262 mS to prevent a system reset.
+ * The WWDG must be refreshed after passing 110 ms and before passing 262 ms to prevent 
+ * a system reset.
 */
 static void Watchdog_InitTask( void )
 {
@@ -133,7 +136,7 @@ static void Watchdog_InitTask( void )
 
     h_watchdog.Instance         = WWDG;
     h_watchdog.Init.Prescaler   = WWDG_PRESCALER_32;
-    h_watchdog.Init.Counter     = WINDOW_VALUE_WWDG;    
+    h_watchdog.Init.Counter     = COUNTER_VALUE_WWDG;    
     h_watchdog.Init.Window      = WINDOW_VALUE_WWDG;
     h_watchdog.Init.EWIMode     = WWDG_EWI_ENABLE;
 
@@ -199,6 +202,7 @@ void safe_state( const char *file, uint32_t line, uint8_t error )
 
     while ( SAFE_STATE == TRUE )
     { 
+        HAL_Delay( PERIOD_WATCHDOG_TASK );      /* delay to refreshed the WWDG in the correct period */
         HAL_WWDG_Refresh( &h_watchdog );
     }
     

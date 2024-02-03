@@ -704,3 +704,14 @@ void test__AppSched_startScheduler__start_scheduler_and_reach_timeout_task( void
 
     AppSched_startScheduler( &ScheWithTask );
 }
+
+/**
+ * @brief   test HAL_TIM_PeriodElapsedCallback.
+ * 
+*/
+void test__HAL_TIM_PeriodElapsedCallback( void )
+{
+    TIM_HandleTypeDef htim;
+
+    HAL_TIM_PeriodElapsedCallback( &htim );
+}

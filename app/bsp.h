@@ -12,7 +12,13 @@
 #include "scheduler.h"
 #include "hel_lcd.h"
 
+/* For testing purpose, when the macro UTEST is defined the safe_sate function is not used */
+#ifndef UTEST
 #define assert_error(expr, error)           ((expr) ? (void)0U : safe_state(__FILE__, __LINE__, (error))) /*!< Macro to handle errrors */
+extern void safe_state( const char *file, uint32_t line, uint8_t error );
+#else
+#define assert_error(expr, error)           ((expr) ? (void)0U : (void)(error) ) /*!< Macro to handle errrors */
+#endif
 
 #define PERIOD_SERIAL_TASK      10u         /*!< Serial task periodicity */
 #define PERIOD_CLOCK_TASK       50u         /*!< Clock task periodicity */
@@ -20,8 +26,6 @@
 #define PERIOD_WATCHDOG_TASK    160u        /*!< Watchdog task periodicity */
 #define TASKS_N                 5u          /*!< Number of tasks registered in the scheduler */
 #define TIMERS_N                1u          /*!< Number of timers registered in the scheduler */
-
-extern void safe_state( const char *file, uint32_t line, uint8_t error );
 
 /**
  * @brief   Variable with external linkage that is used to configure interrupt in ints.c file.
@@ -140,6 +144,7 @@ typedef enum _App_ErrorsCode
     RTC_RET_ERROR,
     SPI_RET_ERROR,  
     SCHE_RET_ERROR,
+    QUEUE_RET_ERROR,
     QUEUE_PAR_ERROR,
     SCHE_PAR_ERROR,
     WWDG_RESET_ERROR,
@@ -154,7 +159,8 @@ typedef enum _App_ErrorsCode
     SPI_FUNC_ERROR,
     TIM_FUNC_ERROR,
     ECC_ONE_ERROR,
-    ECC_TWO_ERROR
+    ECC_TWO_ERROR,
+    LCD_RET_ERROR
 
 } App_ErrorsCode;
 

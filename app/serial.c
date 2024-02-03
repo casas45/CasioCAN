@@ -161,7 +161,10 @@ void Serial_PeriodicTask( void )
 
     while( HIL_QUEUE_isQueueEmptyISR( &queue ) == FALSE )
     {
-        (void) HIL_QUEUE_readDataISR( &queue, &SerialMsg );
+        uint8_t Status = FALSE;
+        
+        Status = HIL_QUEUE_readDataISR( &queue, &SerialMsg );
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
         if( SerialMsg.bytes[ MSG ] < (uint8_t) SERIAL_N_EVENTS )          /*Check if the event is valid*/
         {
@@ -217,7 +220,8 @@ void HAL_FDCAN_RxFifo0Callback( FDCAN_HandleTypeDef *hfdcan, uint32_t TxEventFif
                 break;
         }
 
-        (void) HIL_QUEUE_writeDataISR( &queue, &MsgCAN );     /*add msg to queue*/
+        Status = HIL_QUEUE_writeDataISR( &queue, &MsgCAN );     /*add msg to queue*/
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );
     }
 }
 
@@ -295,6 +299,7 @@ STATIC uint8_t Serial_SingleFrameRx( uint8_t *data, uint8_t *size)
 */
 STATIC APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr )
 {   
+    uint8_t Status = FALSE;
     APP_MsgTypeDef ClkMsg;
     APP_CanTypeDef SerialMsg;
     APP_Messages eventRet = SERIAL_MSG_ERROR;
@@ -314,10 +319,13 @@ STATIC APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr )
         ClkMsg.tm.tm_hour = hour;
         ClkMsg.tm.tm_min  = minutes;
         ClkMsg.tm.tm_sec  = seconds;
-        (void) HIL_QUEUE_writeDataISR( &ClockQueue, &ClkMsg );
+
+        Status = HIL_QUEUE_writeDataISR( &ClockQueue, &ClkMsg );
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );
     }
 
-    (void) HIL_QUEUE_writeDataISR( &queue, &SerialMsg );
+    Status = HIL_QUEUE_writeDataISR( &queue, &SerialMsg );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
     return eventRet;
 }
@@ -335,6 +343,7 @@ STATIC APP_Messages Evaluate_Time_Parameters( APP_CanTypeDef *SerialMsgPtr )
 */
 STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr )
 {
+    uint8_t Status = FALSE;
     APP_MsgTypeDef ClkMsg;
     APP_CanTypeDef SerialMsg;
     APP_Messages eventRet = SERIAL_MSG_ERROR;
@@ -356,10 +365,13 @@ STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr )
         ClkMsg.tm.tm_mon  = month;
         ClkMsg.tm.tm_year = year;
         ClkMsg.tm.tm_wday = WeekDay( day, month, year );
-        (void) HIL_QUEUE_writeDataISR( &ClockQueue, &ClkMsg );
+
+        Status = HIL_QUEUE_writeDataISR( &ClockQueue, &ClkMsg );
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );
     }
 
-    (void) HIL_QUEUE_writeDataISR( &queue, &SerialMsg );
+    Status = HIL_QUEUE_writeDataISR( &queue, &SerialMsg );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
     return eventRet;
 }
@@ -377,6 +389,7 @@ STATIC APP_Messages Evaluate_Date_Parameters( APP_CanTypeDef *SerialMsgPtr )
 */
 STATIC APP_Messages Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr )
 {
+    uint8_t Status = FALSE;
     APP_MsgTypeDef ClkMsg;
     APP_CanTypeDef SerialMsg;
     APP_Messages eventRet = SERIAL_MSG_ERROR;
@@ -394,10 +407,13 @@ STATIC APP_Messages Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr )
         ClkMsg.msg = CLOCK_MSG_ALARM;
         ClkMsg.tm.tm_hour = hour;
         ClkMsg.tm.tm_min  = minutes;
-        (void) HIL_QUEUE_writeDataISR( &ClockQueue, &ClkMsg );
+
+        Status = HIL_QUEUE_writeDataISR( &ClockQueue, &ClkMsg );
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );
     }
 
-    (void) HIL_QUEUE_writeDataISR( &queue, &SerialMsg );
+    Status = HIL_QUEUE_writeDataISR( &queue, &SerialMsg );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
     return eventRet;
 }
@@ -415,6 +431,7 @@ STATIC APP_Messages Evaluate_Alarm_Parameters( APP_CanTypeDef *SerialMsgPtr )
 */
 STATIC APP_Messages Send_Ok_Message( APP_CanTypeDef *SerialMsgPtr )
 {
+    HAL_StatusTypeDef Status = HAL_ERROR;
     APP_Messages eventRet = SERIAL_MSG_NONE;
     
     (void) SerialMsgPtr;
@@ -423,7 +440,8 @@ STATIC APP_Messages Send_Ok_Message( APP_CanTypeDef *SerialMsgPtr )
 
     Serial_SingleFrameTx( data, N_BYTES_RESPONSE );
 
-    HAL_FDCAN_AddMessageToTxFifoQ( &CANHandler, &CANTxHeader, data );
+    Status = HAL_FDCAN_AddMessageToTxFifoQ( &CANHandler, &CANTxHeader, data );
+    assert_error( Status != HAL_ERROR, FDCAN_RET_ERROR );
 
     return eventRet;
 }
@@ -441,6 +459,7 @@ STATIC APP_Messages Send_Ok_Message( APP_CanTypeDef *SerialMsgPtr )
 */
 STATIC APP_Messages Send_Error_Message( APP_CanTypeDef *SerialMsgPtr )
 { 
+    HAL_StatusTypeDef Status = HAL_ERROR;
     APP_Messages eventRet = SERIAL_MSG_NONE;
 
     (void) SerialMsgPtr;
@@ -449,7 +468,8 @@ STATIC APP_Messages Send_Error_Message( APP_CanTypeDef *SerialMsgPtr )
 
     Serial_SingleFrameTx( data, N_BYTES_RESPONSE );
 
-    HAL_FDCAN_AddMessageToTxFifoQ( &CANHandler, &CANTxHeader, data );
+    Status = HAL_FDCAN_AddMessageToTxFifoQ( &CANHandler, &CANTxHeader, data );
+    assert_error( Status != HAL_ERROR, FDCAN_RET_ERROR );
 
     return eventRet;
 }

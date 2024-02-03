@@ -99,12 +99,16 @@ void Clock_InitTask( void )
 */
 void ClockUpdate_Callback( void )
 {
+    uint8_t Status = FALSE;
     APP_MsgTypeDef msgCallback = {0};
 
     msgCallback.msg = CLOCK_MSG_DISPLAY;
 
-    (void) HIL_QUEUE_writeDataISR( &ClockQueue, &msgCallback );
-    (void) AppSched_startTimer( &Scheduler, UpdateTimerID );    /*Restart the timer */
+    Status = HIL_QUEUE_writeDataISR( &ClockQueue, &msgCallback );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
+
+    Status = AppSched_startTimer( &Scheduler, UpdateTimerID );    /*Restart the timer */
+    assert_error( Status == TRUE, SCHE_RET_ERROR );
 }
 
 /**
@@ -127,7 +131,10 @@ void Clock_PeriodicTask( void )
 
     while( ( HIL_QUEUE_isQueueEmptyISR( &ClockQueue ) == FALSE ) )
     {
-        (void) HIL_QUEUE_readDataISR( &ClockQueue, &MsgClkRead );
+        uint8_t Status = FALSE;
+        
+        Status = HIL_QUEUE_readDataISR( &ClockQueue, &MsgClkRead );
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );    
 
         if ( MsgClkRead.msg < (uint8_t) N_CLK_STATES )
         {
@@ -160,7 +167,8 @@ STATIC void Update_Time( APP_MsgTypeDef *PtrMsgClk )
     Status = HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
-    (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
+    Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 }
 
 /**
@@ -189,7 +197,8 @@ STATIC void Update_Date( APP_MsgTypeDef *PtrMsgClk )
     Status = HAL_RTC_SetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
-    (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
+    Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 }
 
 /**
@@ -214,7 +223,8 @@ STATIC void Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
     Status = HAL_RTC_SetAlarm( &hrtc, &sAlarm, RTC_FORMAT_BIN );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
-    (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
+    Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 }
 
 /**
@@ -255,5 +265,6 @@ STATIC void Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
     updateMsg.tm.tm_wday    = sDate.WeekDay;
 
     /*Write to the display queue*/
-    (void) HIL_QUEUE_writeDataISR( &DisplayQueue, &updateMsg );
+    Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &updateMsg );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 }

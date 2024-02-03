@@ -53,7 +53,9 @@ void Display_InitTask( void )
     /* Write a msg to update the display after the initialization  */
     APP_MsgTypeDef nextEvent;
     nextEvent.msg = CLOCK_MSG_DISPLAY;
-    (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
+
+    Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
     /*SPI configuration*/
 
@@ -88,7 +90,8 @@ void Display_InitTask( void )
     LCD_Handler.CsPort    = GPIOD;
     LCD_Handler.CsPin     = GPIO_PIN_3;
 
-    (void) HEL_LCD_Init( &LCD_Handler );
+    Status = HEL_LCD_Init( &LCD_Handler );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
 
     HEL_LCD_Backlight( &LCD_Handler, LCD_ON );
 
@@ -108,7 +111,10 @@ void Display_PeriodicTask( void )
 
     while ( HIL_QUEUE_isQueueEmptyISR( &DisplayQueue ) == FALSE )
     {
-        (void) HIL_QUEUE_readDataISR( &DisplayQueue, &readMsg );
+        uint8_t Status = FALSE;
+        
+        Status = HIL_QUEUE_readDataISR( &DisplayQueue, &readMsg );
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );
         
         if ( readMsg.msg < (uint8_t) N_DISPLAY_EVENTS )
         {

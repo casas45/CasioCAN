@@ -3,3 +3,7 @@
 // this issue
 
 misra-c2012-8.4:app/callbacks.c         //their external linkages are declared at HAL library.
+
+misra-c2012-2.4:app/bsp.h               //the defined enums are used to classify messages
+
+unreadVariable:app/scheduler.c          
