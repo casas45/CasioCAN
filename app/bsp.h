@@ -10,6 +10,22 @@
 #include <string.h>
 #include "queue.h"
 #include "scheduler.h"
+#include "hel_lcd.h"
+
+/* For testing purpose, when the macro UTEST is defined the safe_sate function is not used */
+#ifndef UTEST
+#define assert_error(expr, error)           ((expr) ? (void)0U : safe_state(__FILE__, __LINE__, (error))) /*!< Macro to handle errrors */
+extern void safe_state( const char *file, uint32_t line, uint8_t error );
+#else
+#define assert_error(expr, error)           ((expr) ? (void)0U : (void)(error) ) /*!< Macro to handle errrors */
+#endif
+
+#define PERIOD_SERIAL_TASK      10u         /*!< Serial task periodicity */
+#define PERIOD_CLOCK_TASK       50u         /*!< Clock task periodicity */
+#define PERIOD_HEARTBEAT_TASK   300u        /*!< Heartbeat task periodicity */
+#define PERIOD_WATCHDOG_TASK    160u        /*!< Watchdog task periodicity */
+#define TASKS_N                 5u          /*!< Number of tasks registered in the scheduler */
+#define TIMERS_N                1u          /*!< Number of timers registered in the scheduler */
 
 /**
  * @brief   Variable with external linkage that is used to configure interrupt in ints.c file.
@@ -25,6 +41,22 @@ extern AppQue_Queue DisplayQueue;
 /** @brief  Scheduler external reference */
 extern AppSched_Scheduler Scheduler;
 
+/** @brief  RTC Handler external reference */
+extern RTC_HandleTypeDef hrtc;
+
+/** @brief  WWDG Handler external reference */
+extern WWDG_HandleTypeDef h_watchdog;
+
+/** @brief  LCD Handler external reference */
+extern LCD_HandleTypeDef LCD_Handler;
+
+/** @brief  SPI Handler external reference */
+extern SPI_HandleTypeDef SPI_Handler;
+
+/** @brief  TIM6 Handler external reference */
+extern TIM_HandleTypeDef TIM6_Handler;
+
+/** @brief  Update Timer ID external reference */
 extern uint8_t UpdateTimerID;
 
 /**
@@ -99,5 +131,37 @@ typedef enum
     DISPLAY_MSG_UPDATE = 0,         /*!< Msg to update display */
     N_DISPLAY_EVENTS                /*!< Number of events in Display event machine*/
 } DisplayMessages;
+
+/**
+ * @brief   Enum to clasify the application error codes.
+*/
+typedef enum _App_ErrorsCode
+{
+    WWDG_RET_ERROR = 1u,
+    RCC_RET_ERROR,
+    PWR_RET_ERROR,
+    FDCAN_RET_ERROR,
+    RTC_RET_ERROR,
+    SPI_RET_ERROR,  
+    SCHE_RET_ERROR,
+    QUEUE_RET_ERROR,
+    QUEUE_PAR_ERROR,
+    SCHE_PAR_ERROR,
+    WWDG_RESET_ERROR,
+    SCHE_BUFFER_ERROR,
+    HARD_FAULT_ERROR,
+    TASK_HEARTBEAT_ERROR,
+    TASK_WWDG_ERROR,
+    TASK_SERIAL_ERROR,
+    TASK_CLOCK_ERROR,
+    TASK_DISPLAY_ERROR,
+    CAN_FUNC_ERROR,
+    SPI_FUNC_ERROR,
+    TIM_FUNC_ERROR,
+    ECC_ONE_ERROR,
+    ECC_TWO_ERROR,
+    LCD_RET_ERROR
+
+} App_ErrorsCode;
 
 #endif

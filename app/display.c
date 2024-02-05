@@ -21,7 +21,10 @@ AppQue_Queue DisplayQueue;
 /**
  * @brief LCD Handler.
 */
-static LCD_HandleTypeDef LCD_Handler;
+LCD_HandleTypeDef LCD_Handler;
+
+/** @brief SPI Handler */
+SPI_HandleTypeDef SPI_Handler;
 
 STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg );
 STATIC void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds );
@@ -36,6 +39,8 @@ STATIC void DateString( char *string, uint8_t month, uint8_t day, uint16_t year,
 */
 void Display_InitTask( void )
 {
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
     /*Display queue configuration*/
     static APP_MsgTypeDef DisplayMsgs[ N_DISPLAY_MSGS ];
 
@@ -48,10 +53,11 @@ void Display_InitTask( void )
     /* Write a msg to update the display after the initialization  */
     APP_MsgTypeDef nextEvent;
     nextEvent.msg = CLOCK_MSG_DISPLAY;
-    (void) HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
+
+    Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
     /*SPI configuration*/
-    static SPI_HandleTypeDef SPI_Handler;
 
     SPI_Handler.Instance                = SPI1;
     SPI_Handler.Init.Mode               = SPI_MODE_MASTER;
@@ -65,7 +71,9 @@ void Display_InitTask( void )
     SPI_Handler.Init.TIMode             = SPI_TIMODE_DISABLED;
     SPI_Handler.Init.CRCCalculation     = SPI_CRCCALCULATION_DISABLED;
 
-    HAL_SPI_Init( &SPI_Handler );
+    Status = HAL_SPI_Init( &SPI_Handler );
+
+    assert_error( Status == HAL_OK, SPI_RET_ERROR );
 
     /*LCD Handler configuration*/
     LCD_Handler.spiHandler = &SPI_Handler;
@@ -82,7 +90,8 @@ void Display_InitTask( void )
     LCD_Handler.CsPort    = GPIOD;
     LCD_Handler.CsPin     = GPIO_PIN_3;
 
-    (void) HEL_LCD_Init( &LCD_Handler );
+    Status = HEL_LCD_Init( &LCD_Handler );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
 
     HEL_LCD_Backlight( &LCD_Handler, LCD_ON );
 
@@ -102,7 +111,10 @@ void Display_PeriodicTask( void )
 
     while ( HIL_QUEUE_isQueueEmptyISR( &DisplayQueue ) == FALSE )
     {
-        (void) HIL_QUEUE_readDataISR( &DisplayQueue, &readMsg );
+        uint8_t Status = FALSE;
+        
+        Status = HIL_QUEUE_readDataISR( &DisplayQueue, &readMsg );
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );
         
         if ( readMsg.msg < (uint8_t) N_DISPLAY_EVENTS )
         {
@@ -127,6 +139,8 @@ void Display_PeriodicTask( void )
 */
 STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
 {
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
     char lcd_row_0_date[ LCD_CHARACTERS ];
     char lcd_row_1_time[ LCD_CHARACTERS ];
 
@@ -135,11 +149,18 @@ STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
     
     TimeString( lcd_row_1_time, pDisplayMsg->tm.tm_hour, pDisplayMsg->tm.tm_min, pDisplayMsg->tm.tm_sec );
 
-    (void) HEL_LCD_SetCursor( &LCD_Handler, 0u, 1u );
-    (void) HEL_LCD_String( &LCD_Handler, lcd_row_0_date );  
+    Status = HEL_LCD_SetCursor( &LCD_Handler, 0u, 1u );
+    assert_error( Status == HAL_OK, SPI_RET_ERROR );
 
-    (void) HEL_LCD_SetCursor( &LCD_Handler, 1u, 3u );
-    (void) HEL_LCD_String( &LCD_Handler, lcd_row_1_time );
+    Status = HEL_LCD_String( &LCD_Handler, lcd_row_0_date );
+    assert_error( Status == HAL_OK, SPI_RET_ERROR );  
+
+
+    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 3u );
+    assert_error( Status == HAL_OK, SPI_RET_ERROR );
+
+    Status = HEL_LCD_String( &LCD_Handler, lcd_row_1_time );
+    assert_error( Status == HAL_OK, SPI_RET_ERROR );
 }
 
 /**

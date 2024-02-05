@@ -11,11 +11,18 @@
 #include "bsp.h"
 
 #include "mock_stm32g0xx_hal.h"
+#include "mock_stm32g0xx_hal_tim.h"
+#include "mock_stm32g0xx_hal_cortex.h"
 
 /**
  *  @brief  global variable to indicate the number of times that the while loop will be run.
 */
 uint8_t numLoops;
+
+/**
+ * @brief   reference to TIM6 Handler.
+*/
+TIM_HandleTypeDef TIM6_Handler;
 
 /** @brief  Scheduler without registered tasks */
 AppSched_Scheduler Sche;
@@ -660,6 +667,11 @@ void test__AppSched_stopTimer__stop_Timer_valid_arguments_check_startFlag_False(
 */
 void test__AppSched_startScheduler__start_scheduler_and_reach_timeout_timer( void )
 {
+    HAL_NVIC_SetPriority_Ignore( );
+    HAL_NVIC_EnableIRQ_Ignore( );
+    HAL_TIM_Base_Init_IgnoreAndReturn( HAL_OK );
+    HAL_TIM_Base_Start_IT_IgnoreAndReturn( HAL_OK );
+    
     HAL_GetTick_IgnoreAndReturn( 100 );
     HAL_GetTick_IgnoreAndReturn( 200 );
 
@@ -676,6 +688,11 @@ void test__AppSched_startScheduler__start_scheduler_and_reach_timeout_timer( voi
 */
 void test__AppSched_startScheduler__start_scheduler_and_reach_timeout_task( void )
 {
+    HAL_NVIC_SetPriority_Ignore( );
+    HAL_NVIC_EnableIRQ_Ignore( );
+    HAL_TIM_Base_Init_IgnoreAndReturn( HAL_OK );
+    HAL_TIM_Base_Start_IT_IgnoreAndReturn( HAL_OK );
+    
     HAL_GetTick_IgnoreAndReturn( 100 );
     HAL_GetTick_IgnoreAndReturn( 200 );
     HAL_GetTick_IgnoreAndReturn( 300 );
@@ -686,4 +703,15 @@ void test__AppSched_startScheduler__start_scheduler_and_reach_timeout_task( void
     numLoops = 8;
 
     AppSched_startScheduler( &ScheWithTask );
+}
+
+/**
+ * @brief   test HAL_TIM_PeriodElapsedCallback.
+ * 
+*/
+void test__HAL_TIM_PeriodElapsedCallback( void )
+{
+    TIM_HandleTypeDef htim;
+
+    HAL_TIM_PeriodElapsedCallback( &htim );
 }
