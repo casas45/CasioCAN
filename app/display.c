@@ -27,6 +27,9 @@ LCD_HandleTypeDef LCD_Handler;
 SPI_HandleTypeDef SPI_Handler;
 
 STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg );
+STATIC void DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg );
+STATIC void DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg );
+
 STATIC void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds );
 STATIC void DateString( char *string, uint8_t month, uint8_t day, uint16_t year, uint8_t weekday );
 
@@ -104,7 +107,9 @@ void Display_PeriodicTask( void )
 {
     void (*DisplayEventMachine[ N_DISPLAY_EVENTS ])( APP_MsgTypeDef *DisplayMsg ) =
     {
-        UpdateDisplay
+        UpdateDisplay,
+        DisplayAlarmSet,
+        DisplayAlarmActive
     };
 
     APP_MsgTypeDef readMsg = {0};
@@ -162,6 +167,36 @@ STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
     Status = HEL_LCD_String( &LCD_Handler, lcd_row_1_time );
     assert_error( Status == HAL_OK, SPI_RET_ERROR );
 }
+
+/**
+ * @brief   Display the letter A in the left-down corner.
+ * 
+ * Print the letter A in the display to indicate that the alarm is set.
+ * 
+ * @param   pDisplayMsg Pointer to read message.
+*/
+STATIC void DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg )
+{
+    (void) HEL_LCD_SetCursor( &LCD_Handler, 1u, 0u );   /*set cursor in the left-down corner */
+    (void) HEL_LCD_Data( &LCD_Handler, 'A' );
+}
+
+/**
+ * @brief   Display the message "ALARM!!!" in the second row.
+ * 
+ * When the alarm is activated, the display shows the message "ALARM!!!" in the second line, the 
+ * message is declared as a string with four blank spaces at the beginning to clear the letter
+ * A, which is used to indicate that the alarm is set.
+ * 
+ * @param   pDisplayMsg Pointer to the read message.
+*/
+STATIC void DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg )
+{
+    const char *AlarmMessage = "    ALARM!!!";
+
+    (void) HEL_LCD_SetCursor( &LCD_Handler, 1u, 0u );
+    (void) HEL_LCD_String( &LCD_Handler, AlarmMessage );
+} 
 
 /**
  * @brief   Set the time parameters into a string with a specific format.

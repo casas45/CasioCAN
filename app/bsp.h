@@ -60,6 +60,12 @@ extern TIM_HandleTypeDef TIM6_Handler;
 extern uint8_t UpdateTimerID;
 
 /**
+ * @brief  extern reference to RTC structure
+*/
+extern RTC_HandleTypeDef hrtc;
+
+
+/**
  * @brief   List of messages types.
 */
 typedef enum {
@@ -113,11 +119,12 @@ typedef struct _App_CanTypeDef
 /* cppcheck-suppress misra-c2012-2.4 ; this enum is only used to clasify the clock messages */
 typedef enum
 {
-    CLOCK_MSG_TIME = 0,     /*!< Msg to update RTC time */
-    CLOCK_MSG_DATE,         /*!< Msg to update RTC date */
-    CLOCK_MSG_ALARM,        /*!< Msg to update RTC alarm */
-    CLOCK_MSG_DISPLAY,      /*!< Msg to update display */
-    N_CLK_STATES            /*!< Number of events in clock event machine*/
+    CLOCK_MSG_TIME = 0,         /*!< Msg to update RTC time */
+    CLOCK_MSG_DATE,             /*!< Msg to update RTC date */
+    CLOCK_MSG_ALARM,            /*!< Msg to update RTC alarm */
+    CLOCK_MSG_DISPLAY,          /*!< Msg to update display */
+    CLOCK_MSG_ALARM_ACTIVATED,  /*!< Msg to activate the alarm */
+    N_CLK_STATES                /*!< Number of events in clock event machine*/
 } ClkMessages;
 
 /**
@@ -129,6 +136,8 @@ typedef enum
 typedef enum
 {
     DISPLAY_MSG_UPDATE = 0,         /*!< Msg to update display */
+    DISPLAY_MSG_ALARM_SET,          /*!< Msg to print the A in the display */
+    DISPLAY_MSG_ALARM_ACTIVE,       /*!< Msg to display the word "ALARM!!!" */
     N_DISPLAY_EVENTS                /*!< Number of events in Display event machine*/
 } DisplayMessages;
 

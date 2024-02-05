@@ -19,14 +19,6 @@ AppQue_Queue ClockQueue;
 */
 RTC_HandleTypeDef hrtc;
 
-/** @brief Struct used to set and get time in RTC */
-static RTC_TimeTypeDef sTime = {0};
-/** @brief Struct used to set and get date in RTC */
-static RTC_DateTypeDef sDate = {0};
-/** @brief Struct used to set and get alarm in RTC */
-static RTC_AlarmTypeDef sAlarm = {0};
-
-
 STATIC void Update_Time( APP_MsgTypeDef *PtrMsgClk );
 
 STATIC void Update_Date( APP_MsgTypeDef *PtrMsgClk );
@@ -34,6 +26,8 @@ STATIC void Update_Date( APP_MsgTypeDef *PtrMsgClk );
 STATIC void Set_Alarm( APP_MsgTypeDef *PtrMsgClk );
 
 STATIC void Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk );
+
+STATIC void Alarm_Activated( APP_MsgTypeDef *PtrMsgClk );
 
 /**
  * @brief   Function to initialize RTC module and ClkQueue.
@@ -48,6 +42,9 @@ void Clock_InitTask( void )
 {
     HAL_StatusTypeDef Status = HAL_ERROR;
     
+    RTC_TimeTypeDef sTime = {0};
+    RTC_DateTypeDef sDate = {0};
+
     /*Clock Queue config*/
     static APP_MsgTypeDef messagesClock[ N_MESSAGES_CLKQUEUE ];
 
@@ -83,12 +80,10 @@ void Clock_InitTask( void )
     Status = HAL_RTC_SetDate( &hrtc, &sDate, RTC_FORMAT_BCD );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
-    /*configure Alarm*/
-    sAlarm.AlarmMask            = RTC_ALARMMASK_HOURS | RTC_ALARMMASK_MINUTES;
-    sAlarm.AlarmSubSecondMask   = RTC_ALARMSUBSECONDMASK_NONE;
-    sAlarm.AlarmDateWeekDaySel  = RTC_ALARMDATEWEEKDAYSEL_WEEKDAY;
-    sAlarm.AlarmDateWeekDay     = RTC_WEEKDAY_SATURDAY;
-    sAlarm.Alarm                = RTC_ALARM_A;
+    /*enable RTC alarm interrupt*/
+
+    HAL_NVIC_SetPriority( RTC_TAMP_IRQn, 2, 0 );
+    HAL_NVIC_EnableIRQ( RTC_TAMP_IRQn );
 }
 
 /**
@@ -126,7 +121,8 @@ void Clock_PeriodicTask( void )
         Update_Time,
         Update_Date,
         Set_Alarm,
-        Send_Display_Msg
+        Send_Display_Msg,
+        Alarm_Activated
     };
 
     while( ( HIL_QUEUE_isQueueEmptyISR( &ClockQueue ) == FALSE ) )
@@ -157,6 +153,8 @@ STATIC void Update_Time( APP_MsgTypeDef *PtrMsgClk )
 {
     HAL_StatusTypeDef Status = HAL_ERROR; 
 
+    RTC_TimeTypeDef sTime = {0};
+    
     APP_MsgTypeDef nextEvent;
     nextEvent.msg = CLOCK_MSG_DISPLAY;
 
@@ -186,6 +184,8 @@ STATIC void Update_Date( APP_MsgTypeDef *PtrMsgClk )
 {
     HAL_StatusTypeDef Status = HAL_ERROR;
 
+    RTC_DateTypeDef sDate = {0};
+    
     APP_MsgTypeDef nextEvent;
     nextEvent.msg = CLOCK_MSG_DISPLAY;
 
@@ -214,16 +214,20 @@ STATIC void Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
 {
     HAL_StatusTypeDef Status = HAL_ERROR;
 
+    RTC_AlarmTypeDef sAlarm = {0};
+    
     APP_MsgTypeDef nextEvent;
-    nextEvent.msg = CLOCK_MSG_DISPLAY;
+    nextEvent.msg = DISPLAY_MSG_ALARM_SET;
 
+    sAlarm.AlarmMask            = RTC_ALARMMASK_DATEWEEKDAY | RTC_ALARMMASK_SECONDS;   /* Ignore date and seconds */
+    sAlarm.Alarm                = RTC_ALARM_A;
     sAlarm.AlarmTime.Hours      = PtrMsgClk->tm.tm_hour;
     sAlarm.AlarmTime.Minutes    = PtrMsgClk->tm.tm_min;
 
-    Status = HAL_RTC_SetAlarm( &hrtc, &sAlarm, RTC_FORMAT_BIN );
+    Status = HAL_RTC_SetAlarm_IT( &hrtc, &sAlarm, RTC_FORMAT_BIN );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
-    Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
+    Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextEvent );
     assert_error( Status == TRUE, QUEUE_RET_ERROR );
 }
 
@@ -242,8 +246,10 @@ STATIC void Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
 
     HAL_StatusTypeDef Status = HAL_ERROR;
 
-    APP_MsgTypeDef updateMsg;
+    RTC_TimeTypeDef sTime = {0};
+    RTC_DateTypeDef sDate = {0};
 
+    APP_MsgTypeDef updateMsg;
     updateMsg.msg = DISPLAY_MSG_UPDATE;
 
     Status = HAL_RTC_GetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
@@ -251,10 +257,7 @@ STATIC void Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
     
     Status = HAL_RTC_GetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
-    
-    Status = HAL_RTC_GetAlarm( &hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN );
-    assert_error( Status == HAL_OK, RTC_RET_ERROR );
-    
+
     updateMsg.tm.tm_hour    = sTime.Hours;
     updateMsg.tm.tm_min     = sTime.Minutes;
     updateMsg.tm.tm_sec     = sTime.Seconds;
@@ -267,4 +270,41 @@ STATIC void Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
     /*Write to the display queue*/
     Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &updateMsg );
     assert_error( Status == TRUE, QUEUE_RET_ERROR );
+}
+
+/**
+ * @brief   Event where the processes to activate the alarm are initiated.
+ * 
+ * 
+ * 
+ * @param   PtrMsgClk Pointer to message clock read.
+*/
+STATIC void Alarm_Activated( APP_MsgTypeDef *PtrMsgClk )
+{
+    APP_MsgTypeDef displayMsg;
+    displayMsg.msg = DISPLAY_MSG_ALARM_ACTIVE;
+
+    (void) AppSched_stopTimer( &Scheduler, UpdateTimerID );
+    (void) HIL_QUEUE_writeDataISR( &DisplayQueue, &displayMsg );
+    /*start timers*/
+    /*set flag*/
+}
+
+/**
+ * @brief   Alarm A callback.
+ * 
+ * This callback is used to initiate the processes that need to be executed when the 
+ * alarm is activated.
+ * 
+ * @param   hrtc pointer to the RTC handle struct.
+*/
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
+void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc)
+{
+    (void) hrtc;
+
+    APP_MsgTypeDef alarmMsg;
+    alarmMsg.msg = CLOCK_MSG_ALARM_ACTIVATED;
+
+    (void) HIL_QUEUE_writeDataISR( &ClockQueue, &alarmMsg );
 }
