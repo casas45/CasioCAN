@@ -5,6 +5,8 @@
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
 void HAL_MspInit( void )
 {
+    __HAL_RCC_GPIOC_CLK_ENABLE();
+
     HAL_StatusTypeDef Status = HAL_ERROR;
 
     RCC_OscInitTypeDef        RCC_OscInitStruct = {0};
@@ -141,4 +143,5 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htim)
 {
     (void) htim;
     __HAL_RCC_TIM6_CLK_ENABLE( );
+    __HAL_RCC_TIM14_CLK_ENABLE( );
 }

@@ -27,10 +27,13 @@ LCD_HandleTypeDef LCD_Handler;
 SPI_HandleTypeDef SPI_Handler;
 
 STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg );
+
 STATIC void DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg );
+
 STATIC void DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg );
 
 STATIC void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds );
+
 STATIC void DateString( char *string, uint8_t month, uint8_t day, uint16_t year, uint8_t weekday );
 
 /**
@@ -161,7 +164,7 @@ STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
     assert_error( Status == HAL_OK, SPI_RET_ERROR );  
 
 
-    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 3u );
+    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 4u );
     assert_error( Status == HAL_OK, SPI_RET_ERROR );
 
     Status = HEL_LCD_String( &LCD_Handler, lcd_row_1_time );
@@ -177,8 +180,15 @@ STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
 */
 STATIC void DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg )
 {
-    (void) HEL_LCD_SetCursor( &LCD_Handler, 1u, 0u );   /*set cursor in the left-down corner */
-    (void) HEL_LCD_Data( &LCD_Handler, 'A' );
+    (void) pDisplayMsg;
+
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
+    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 0u );   /*set cursor in the left-down corner */
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    Status = HEL_LCD_Data( &LCD_Handler, 'A' );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
 }
 
 /**
@@ -192,10 +202,17 @@ STATIC void DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg )
 */
 STATIC void DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg )
 {
+    (void) pDisplayMsg;
+
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
     const char *AlarmMessage = "    ALARM!!!";
 
-    (void) HEL_LCD_SetCursor( &LCD_Handler, 1u, 0u );
-    (void) HEL_LCD_String( &LCD_Handler, AlarmMessage );
+    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 0u );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    Status = HEL_LCD_String( &LCD_Handler, AlarmMessage );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
 } 
 
 /**

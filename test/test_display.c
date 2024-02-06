@@ -34,6 +34,12 @@ void tearDown( void )
 /** @brief Reference for the private function UpdateDisplay. */
 void UpdateDisplay( APP_MsgTypeDef * );
 
+/** @brief Reference for the private function DisplayAlarmSet. */
+void DisplayAlarmSet( APP_MsgTypeDef * );
+
+/** @brief Reference for the private function DisplayAlarmActive. */
+void DisplayAlarmActive( APP_MsgTypeDef * );
+
 /** @brief Reference for the private function TimeString. */
 void TimeString( char *, uint8_t, uint8_t, uint8_t );
 
@@ -130,6 +136,32 @@ void test__UpdateDisplay( void )
     HEL_LCD_String_ExpectAnyArgsAndReturn( HAL_OK );
 
     UpdateDisplay( &receivedMSG );
+}
+
+/**
+ * @brief   test DisplayAlarmSet function.
+*/
+void test__DisplayAlarmSet(void)
+{
+    APP_MsgTypeDef receivedMSG = {0};
+
+    HEL_LCD_SetCursor_IgnoreAndReturn( TRUE );
+    HEL_LCD_Data_IgnoreAndReturn( TRUE );
+
+    DisplayAlarmSet( &receivedMSG );
+}
+
+/**
+ * @brief   test DisplayAlarmSet function.
+*/
+void test__DisplayAlarmActive(void)
+{
+    APP_MsgTypeDef receivedMSG = {0};
+
+    HEL_LCD_SetCursor_IgnoreAndReturn( TRUE );
+    HEL_LCD_String_IgnoreAndReturn( TRUE );
+
+    DisplayAlarmActive( &receivedMSG );
 }
 
 /**

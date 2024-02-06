@@ -25,7 +25,7 @@ extern void safe_state( const char *file, uint32_t line, uint8_t error );
 #define PERIOD_HEARTBEAT_TASK   300u        /*!< Heartbeat task periodicity */
 #define PERIOD_WATCHDOG_TASK    160u        /*!< Watchdog task periodicity */
 #define TASKS_N                 5u          /*!< Number of tasks registered in the scheduler */
-#define TIMERS_N                1u          /*!< Number of timers registered in the scheduler */
+#define TIMERS_N                3u          /*!< Number of timers registered in the scheduler */
 
 /**
  * @brief   Variable with external linkage that is used to configure interrupt in ints.c file.
@@ -59,10 +59,11 @@ extern TIM_HandleTypeDef TIM6_Handler;
 /** @brief  Update Timer ID external reference */
 extern uint8_t UpdateTimerID;
 
-/**
- * @brief  extern reference to RTC structure
-*/
-extern RTC_HandleTypeDef hrtc;
+/** @brief  Variable to save the TimerAlarmActiveOneSecond_ID */
+extern uint8_t TimerAlarmActiveOneSecond_ID;
+
+/** @brief  Variable to save the TimerAlarmActiveOneMinute_ID ID */
+extern uint8_t TimerDeactivateAlarm_ID;
 
 
 /**
@@ -124,7 +125,8 @@ typedef enum
     CLOCK_MSG_ALARM,            /*!< Msg to update RTC alarm */
     CLOCK_MSG_DISPLAY,          /*!< Msg to update display */
     CLOCK_MSG_ALARM_ACTIVATED,  /*!< Msg to activate the alarm */
-    N_CLK_STATES                /*!< Number of events in clock event machine*/
+    CLOCK_MSG_DEACTIVATE_ALARM, /*!< Msg to deactivate the alarm */
+    N_CLK_EVENTS                /*!< Number of events in clock event machine*/
 } ClkMessages;
 
 /**
@@ -169,7 +171,8 @@ typedef enum _App_ErrorsCode
     TIM_FUNC_ERROR,
     ECC_ONE_ERROR,
     ECC_TWO_ERROR,
-    LCD_RET_ERROR
+    LCD_RET_ERROR,
+    TIM_RET_ERROR
 
 } App_ErrorsCode;
 
