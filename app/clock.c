@@ -47,6 +47,10 @@ STATIC APP_MsgTypeDef Clock_Alarm_Activated( APP_MsgTypeDef *PtrMsgClk );
 
 STATIC APP_MsgTypeDef Clock_Deactivate_Alarm( APP_MsgTypeDef *PtrMsgClk );
 
+STATIC APP_MsgTypeDef Clock_ButtonPressed( APP_MsgTypeDef *PtrMsgClk );
+
+STATIC APP_MsgTypeDef Clock_ButtonReleased( APP_MsgTypeDef *PtrMsgClk );
+
 /**
  * @brief   Function to initialize RTC module and ClkQueue.
  *
@@ -87,6 +91,19 @@ void Clock_InitTask( void )
 
     /*Clock Queue config*/
     static APP_MsgTypeDef messagesClock[ N_MESSAGES_CLKQUEUE ];
+
+    GPIO_InitTypeDef GPIO_InitStruct;
+
+    /* Button 1 initialization */
+    GPIO_InitStruct.Mode    = GPIO_MODE_IT_RISING_FALLING;
+    GPIO_InitStruct.Speed   = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Pull    = GPIO_NOPULL;
+    GPIO_InitStruct.Pin     = GPIO_PIN_5;
+
+    HAL_GPIO_Init( GPIOB, &GPIO_InitStruct );
+
+    HAL_NVIC_SetPriority( EXTI4_15_IRQn, 2, 0 );
+    HAL_NVIC_EnableIRQ( EXTI4_15_IRQn );
 
     ClockQueue.Buffer   = messagesClock;
     ClockQueue.Elements = N_MESSAGES_CLKQUEUE;
@@ -215,7 +232,9 @@ void Clock_PeriodicTask( void )
     Clock_Set_Alarm,
     Clock_Send_Display_Msg,
     Clock_Alarm_Activated,
-    Clock_Deactivate_Alarm
+    Clock_Deactivate_Alarm,
+    Clock_ButtonPressed,
+    Clock_ButtonReleased
     };
 
     while( ( HIL_QUEUE_isQueueEmptyISR( &ClockQueue ) == FALSE ) )
@@ -501,7 +520,33 @@ STATIC APP_MsgTypeDef Clock_Deactivate_Alarm( APP_MsgTypeDef *PtrMsgClk )
 }
 
 /**
- * @brief   Alarm A callback.
+ * @brief   Button pressed event.
+ * 
+ * @param   PtrMsgClk Pointer to the clock message read.
+*/
+STATIC APP_MsgTypeDef Clock_ButtonPressed( APP_MsgTypeDef *PtrMsgClk )
+{
+    uint8_t Status = FALSE;
+
+    Status = AppSched_stopTimer( &Scheduler, UpdateTimerID );
+    assert_error( Status == TRUE, SCHE_RET_ERROR );
+}
+
+/**
+ * @brief   Button released event.
+ * 
+ * @param   PtrMsgClk Pointer to the clock message read.
+*/
+STATIC APP_MsgTypeDef Clock_ButtonReleased( APP_MsgTypeDef *PtrMsgClk )
+{
+    uint8_t Status = FALSE;
+
+    Status = AppSched_startTimer( &Scheduler, UpdateTimerID );
+    assert_error( Status == TRUE, SCHE_RET_ERROR );
+}
+
+/**
+ * @brief   Alarm A interupt callback.
  *
  * This callback is used to initiate the processes that need to be executed when the
  * alarm is activated.
@@ -521,4 +566,26 @@ void HAL_RTC_AlarmAEventCallback( RTC_HandleTypeDef *hrtc )
 
     Status = HAL_RTC_DeactivateAlarm( hrtc, RTC_ALARM_A );     /* Disable the alarm A*/
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
+}
+
+/**
+ * @brief   GPIO interrupt falling callback.
+ * 
+ * This callback is called when the button_1 is pressed, and here is written the event ButtonPressed
+ * in the ClockQueue.
+*/
+void HAL_GPIO_EXTI_Falling_Callback( uint16_t GPIO_Pin )
+{
+
+}
+
+/**
+ * @brief   GPIO interrupt rising callback.
+ * 
+ * This callback is called when the button_1 is released, and here is written the event ButtonReleased
+ * in the ClockQueue.
+*/
+void HAL_GPIO_EXTI_Rising_Callback( uint16_t GPIO_Pin )
+{
+
 }

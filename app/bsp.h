@@ -127,6 +127,8 @@ typedef enum
     CLOCK_MSG_DISPLAY,          /*!< Msg to update display */
     CLOCK_MSG_ALARM_ACTIVATED,  /*!< Msg to activate the alarm */
     CLOCK_MSG_DEACTIVATE_ALARM, /*!< Msg to deactivate the alarm */
+    CLOCK_MSG_BTN_PRESSED,
+    CLOCK_MSG_BTN_RELEASED,
     N_CLK_EVENTS,               /*!< Number of events in clock event machine*/
     CLK_MSG_NONE
 } ClkMessages;

@@ -7,6 +7,8 @@ void HAL_MspInit( void )
 {
     __HAL_RCC_GPIOC_CLK_ENABLE();
 
+    __HAL_RCC_GPIOB_CLK_ENABLE( );
+    
     HAL_StatusTypeDef Status = HAL_ERROR;
 
     RCC_OscInitTypeDef        RCC_OscInitStruct = {0};

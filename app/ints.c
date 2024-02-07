@@ -60,3 +60,9 @@ void RTC_TAMP_IRQHandler( void )
 {
     HAL_RTC_AlarmIRQHandler( &hrtc );
 }
+
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
+void EXTI4_15_IRQHandler( void )
+{
+    HAL_GPIO_EXTI_IRQHandler( GPIO_PIN_5 );
+}
