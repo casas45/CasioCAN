@@ -149,7 +149,7 @@ void Display_PeriodicTask( void )
 */
 STATIC APP_MsgTypeDef UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
 {
-    APP_MsgTypeDef nextEvent;
+    APP_MsgTypeDef nextEvent = {0};
     nextEvent.msg = DISPLAY_MSG_NONE;
 
     HAL_StatusTypeDef Status = HAL_ERROR;
@@ -190,7 +190,7 @@ STATIC APP_MsgTypeDef DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg )
 {
     (void) pDisplayMsg;
 
-    APP_MsgTypeDef nextEvent;
+    APP_MsgTypeDef nextEvent = {0};
     nextEvent.msg = DISPLAY_MSG_NONE;
 
     HAL_StatusTypeDef Status = HAL_ERROR;
@@ -219,7 +219,7 @@ STATIC APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg )
 {
     (void) pDisplayMsg;
 
-    APP_MsgTypeDef nextEvent;
+    APP_MsgTypeDef nextEvent = {0};
     nextEvent.msg = DISPLAY_MSG_NONE;
 
     HAL_StatusTypeDef Status = HAL_ERROR;
