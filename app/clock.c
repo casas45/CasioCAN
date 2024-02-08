@@ -51,6 +51,8 @@ STATIC APP_MsgTypeDef Clock_ButtonPressed( APP_MsgTypeDef *PtrMsgClk );
 
 STATIC APP_MsgTypeDef Clock_ButtonReleased( APP_MsgTypeDef *PtrMsgClk );
 
+STATIC void Clock_GetAlarm( APP_MsgTypeDef *PtrMsgClk );
+
 /**
  * @brief   Function to initialize RTC module and ClkQueue.
  *
@@ -526,10 +528,36 @@ STATIC APP_MsgTypeDef Clock_Deactivate_Alarm( APP_MsgTypeDef *PtrMsgClk )
 */
 STATIC APP_MsgTypeDef Clock_ButtonPressed( APP_MsgTypeDef *PtrMsgClk )
 {
+    (void) PtrMsgClk;
+    
+    APP_MsgTypeDef nextEvent;
+
     uint8_t Status = FALSE;
 
     Status = AppSched_stopTimer( &Scheduler, UpdateTimerID );
     assert_error( Status == TRUE, SCHE_RET_ERROR );
+
+    if( flg_Alarm_Active == TRUE )
+    {
+        nextEvent.msg = CLOCK_DEACTIVATE_ALARM;                         /* Write deactivate alarm event */
+
+        Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );
+    }
+    else if( flg_Alarm_Set == TRUE )
+    {
+        nextEvent.msg = CLOCK_MSG_GET_ALARM;
+
+        Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );     /* ALARM=XX:XX message*/
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );
+    }
+    else        /* Alarm no config */
+    {
+        nextEvent.msg = DISPLAY_MSG_ALARM_NO_CONF;
+
+        Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextEvent );     /* ALARM NO CONFIG message */
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );
+    }
 }
 
 /**
@@ -539,10 +567,61 @@ STATIC APP_MsgTypeDef Clock_ButtonPressed( APP_MsgTypeDef *PtrMsgClk )
 */
 STATIC APP_MsgTypeDef Clock_ButtonReleased( APP_MsgTypeDef *PtrMsgClk )
 {
+    (void) PtrMsgClk;
+
     uint8_t Status = FALSE;
+
+    APP_MsgTypeDef updateMsg;
+    
+    updateMsg.msg = DISPLAY_CLEAR_SECOND_LINE;
+
+    Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &updateMsg );
+    assert_error( Status == HAL_OK, QUEUE_RET_ERROR );
 
     Status = AppSched_startTimer( &Scheduler, UpdateTimerID );
     assert_error( Status == TRUE, SCHE_RET_ERROR );
+
+    updateMsg.msg = CLOCK_MSG_DISPLAY;
+
+    Status = HIL_QUEUE_writeDataISR( &ClockQueue, &updateMsg );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
+
+    if( flg_Alarm_Set == TRUE )
+    {
+        updateMsg.msg = ;       /* Print the letter A again */
+
+        Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &updateMsg );
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );
+        
+    }
+    
+}
+
+/**
+ * @brief   Clock_GetAlarm event.
+ * 
+ * This function get the alarm parameter and send them to the display queue to show them.
+ * 
+ * @param   PtrMsgClk Pointer to the read message.
+*/
+STATIC void Clock_GetAlarm( APP_MsgTypeDef *PtrMsgClk )
+{
+    (void) PtrMsgClk;
+
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
+    APP_MsgTypeDef alarmMsg = {0};
+    RTC_AlarmTypeDef sAlarm = {0};
+
+    Status = HAL_RTC_GetAlarm( &hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN );
+    assert_error( Status == HAL_OK, RTC_RET_ERROR );
+
+    alarmMsg.msg        = DISPLAY_ALARM_VALUES;
+    alarmMsg.tm.tm_hour = sAlarm.AlarmTime.Hours;
+    alarmMsg.tm.tm_min  = sAlarm.AlarmTime.Minutes;
+    
+    Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &alarmMsg );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 }
 
 /**
@@ -574,9 +653,18 @@ void HAL_RTC_AlarmAEventCallback( RTC_HandleTypeDef *hrtc )
  * This callback is called when the button_1 is pressed, and here is written the event ButtonPressed
  * in the ClockQueue.
 */
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
 void HAL_GPIO_EXTI_Falling_Callback( uint16_t GPIO_Pin )
 {
+    (void) GPIO_Pin;
 
+    uint8_t Status = FALSE;
+    APP_MsgTypeDef buttonMsg;
+
+    buttonMsg.msg = CLOCK_MSG_BTN_PRESSED;
+
+    Status = HIL_QUEUE_writeDataISR( &ClockQueue, &buttonMsg );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 }
 
 /**
@@ -585,7 +673,16 @@ void HAL_GPIO_EXTI_Falling_Callback( uint16_t GPIO_Pin )
  * This callback is called when the button_1 is released, and here is written the event ButtonReleased
  * in the ClockQueue.
 */
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
 void HAL_GPIO_EXTI_Rising_Callback( uint16_t GPIO_Pin )
 {
+    (void) GPIO_Pin;
 
+    uint8_t Status = FALSE;
+    APP_MsgTypeDef buttonMsg;
+
+    buttonMsg.msg = CLOCK_MSG_BTN_RELEASED;
+
+    Status = HIL_QUEUE_writeDataISR( &ClockQueue, &buttonMsg );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 }
