@@ -62,31 +62,39 @@ void tearDown( void )
 
 }
 
-/** @brief Reference for the private function Clock_Set_Time. */
+/** 
+ * @brief   Reference for the private function Clock_Set_Time. 
+ * @return  Message with the next event.
+ * */
 APP_MsgTypeDef Clock_Set_Time( APP_MsgTypeDef * );
 
 /** 
  * @brief Reference for the private function Clock_Set_Date.
+ * @return  Message with the next event.
 */
 APP_MsgTypeDef Clock_Set_Date( APP_MsgTypeDef * );
 
 /** 
  * @brief Reference for the private function Clock_Set_Alarm.
+ * @return  Message with the next event.
 */
 APP_MsgTypeDef Clock_Set_Alarm( APP_MsgTypeDef * );
 
 /** 
  * @brief Reference for the private function Update_Display 
+ * @return  Message with the next event.
 */
 APP_MsgTypeDef Clock_Send_Display_Msg( APP_MsgTypeDef * );
 
 /** 
  * @brief Reference for the private function Clock_Alarm_Activated.
+ * @return  Message with the next event.
 */
 APP_MsgTypeDef Clock_Alarm_Activated( APP_MsgTypeDef * );
 
 /** 
  * @brief Reference for the private function Clock_Deactivate_Alarm. 
+ * @return  Message with the next event.
 */
 APP_MsgTypeDef Clock_Deactivate_Alarm( APP_MsgTypeDef * );
 

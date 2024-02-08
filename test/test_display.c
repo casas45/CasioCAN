@@ -31,13 +31,23 @@ void tearDown( void )
 {
 }
 
-/** @brief Reference for the private function UpdateDisplay. */
+/** 
+ * @brief Reference for the private function UpdateDisplay. 
+ * @return  Message with the next event.
+ * */
 APP_MsgTypeDef UpdateDisplay( APP_MsgTypeDef * );
 
-/** @brief Reference for the private function DisplayAlarmSet. */
+/** 
+ * @brief Reference for the private function DisplayAlarmSet. 
+ * 
+ * @return  Message with the next event.
+*/
 APP_MsgTypeDef DisplayAlarmSet( APP_MsgTypeDef * );
 
-/** @brief Reference for the private function DisplayAlarmActive. */
+/** 
+ * @brief Reference for the private function DisplayAlarmActive. 
+ * @return  Message with the next event.
+*/
 APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef * );
 
 /** @brief Reference for the private function TimeString. */
