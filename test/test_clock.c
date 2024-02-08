@@ -62,33 +62,33 @@ void tearDown( void )
 
 }
 
-/** @brief Reference for the private function Set_Time. */
-void Set_Time( APP_MsgTypeDef * );
+/** @brief Reference for the private function Clock_Set_Time. */
+APP_MsgTypeDef Clock_Set_Time( APP_MsgTypeDef * );
 
 /** 
- * @brief Reference for the private function Set_Date.
+ * @brief Reference for the private function Clock_Set_Date.
 */
-void Set_Date( APP_MsgTypeDef * );
+APP_MsgTypeDef Clock_Set_Date( APP_MsgTypeDef * );
 
 /** 
- * @brief Reference for the private function Set_Alarm.
+ * @brief Reference for the private function Clock_Set_Alarm.
 */
-void Set_Alarm( APP_MsgTypeDef * );
+APP_MsgTypeDef Clock_Set_Alarm( APP_MsgTypeDef * );
 
 /** 
  * @brief Reference for the private function Update_Display 
 */
-void Send_Display_Msg( APP_MsgTypeDef * );
+APP_MsgTypeDef Clock_Send_Display_Msg( APP_MsgTypeDef * );
 
 /** 
- * @brief Reference for the private function Alarm_Activated.
+ * @brief Reference for the private function Clock_Alarm_Activated.
 */
-void Alarm_Activated( APP_MsgTypeDef * );
+APP_MsgTypeDef Clock_Alarm_Activated( APP_MsgTypeDef * );
 
 /** 
- * @brief Reference for the private function Deactivate_Alarm. 
+ * @brief Reference for the private function Clock_Deactivate_Alarm. 
 */
-void Deactivate_Alarm( APP_MsgTypeDef * );
+APP_MsgTypeDef Clock_Deactivate_Alarm( APP_MsgTypeDef * );
 
 /**
  * @brief   Function to test the Clock_InitTask function.
@@ -281,125 +281,156 @@ void test__Clock_PeriodicTask__uknown_msg_dont_run_any_function( void )
 
 
 /**
- * @brief   test Set_Time function.
+ * @brief   test Clock_Set_Time function.
 */
-void test__Set_Time( void )
+void test__Clock_Set_Time__AlarmActivated_flg_FALSE( void )
 {
     APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
+
+    AlarmActivated_flg = FALSE;
 
     HAL_RTC_SetTime_ExpectAnyArgsAndReturn( HAL_OK );
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    Set_Time( &msgReceived );
+    nextEvent = Clock_Set_Time( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, CLK_MSG_NONE );
 }
 
 /**
- * @brief   test Set_Time function, AlarmActivated_flg TRUE.
+ * @brief   test Clock_Set_Time function, AlarmActivated_flg TRUE.
 */
-void test__Set_Time__AlarmActivated_flg_TRUE( void )
+void test__Clock_Set_Time__AlarmActivated_flg_TRUE( void )
 {
     AlarmActivated_flg = TRUE;
 
     APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
 
     HAL_RTC_SetTime_ExpectAnyArgsAndReturn( HAL_OK );
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
 
-    Set_Time( &msgReceived );
+    nextEvent = Clock_Set_Time( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, CLOCK_MSG_DEACTIVATE_ALARM );
 }
 
 /**
- * @brief   test Set_Date function, AlarmActivated_flg TRUE.
+ * @brief   test Clock_Set_Date function, AlarmActivated_flg TRUE.
  *  
 */
-void test__Set_Date__AlarmActivated_flg_TRUE( void )
+void test__Clock_Set_Date__AlarmActivated_flg_TRUE( void )
 {
     AlarmActivated_flg = TRUE;
 
     APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
 
     HAL_RTC_SetDate_ExpectAnyArgsAndReturn( HAL_OK );
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
 
-    Set_Date( &msgReceived );
+    nextEvent = Clock_Set_Date( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, CLOCK_MSG_DEACTIVATE_ALARM );
 }
 
 /**
- * @brief   test Set_Date function.
+ * @brief   test Clock_Set_Date function, AlarmActivated_flg FALSE.
  *  
 */
-void test__Set_Date( void )
+void test__Clock_Set_Date__AlarmActivated_flg_FALSE( void )
 {
+    AlarmActivated_flg = FALSE;
+
     APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
 
     HAL_RTC_SetDate_ExpectAnyArgsAndReturn( HAL_OK );
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
 
-    Set_Date( &msgReceived );
+    nextEvent = Clock_Set_Date( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, CLK_MSG_NONE );
 }
 
 /**
- * @brief   test Set_Alarm function.
+ * @brief   test Clock_Set_Alarm function.
 */
-void test__Set_Alarm( void )
+void test__Clock_Set_Alarm__AlarmActivated_flg_FALSE( void )
 {
+    AlarmActivated_flg = FALSE;
+
     APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
 
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
     HAL_RTC_SetAlarm_IT_ExpectAnyArgsAndReturn( HAL_OK );
 
-    Set_Alarm( &msgReceived );
+    nextEvent = Clock_Set_Alarm( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, CLK_MSG_NONE );
 }
 
 /**
- * @brief   test Set_Alarm function, AlarmActivated_flg TRUE.
+ * @brief   test Clock_Set_Alarm function, AlarmActivated_flg TRUE.
 */
-void test__Set_Alarm__AlarmActivated_flg_TRUE( void )
+void test__Clock_Set_Alarm__AlarmActivated_flg_TRUE( void )
 {
     AlarmActivated_flg = TRUE;
 
     APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
 
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
     HAL_RTC_SetAlarm_IT_ExpectAnyArgsAndReturn( HAL_OK );
 
-    Set_Alarm( &msgReceived );
+    nextEvent = Clock_Set_Alarm( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, CLOCK_MSG_DEACTIVATE_ALARM );
 }
 
 /**
- * @brief   test Send_Display_Msg function.
+ * @brief   test Clock_Send_Display_Msg function.
 */
-void test__Send_Display_Msg( void )
+void test__Clock_Send_Display_Msg( void )
 {
     APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
 
     HAL_RTC_GetTime_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetDate_ExpectAnyArgsAndReturn( HAL_OK );
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
-    Send_Display_Msg( &msgReceived );
+    nextEvent = Clock_Send_Display_Msg( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_UPDATE );
 }
 
 /**
- * @brief   test Alarm_Activated function.
+ * @brief   test Clock_Alarm_Activated function.
 */
-void test__Alarm_Activated( void )
+void test__Clock_Alarm_Activated( void )
 {
     APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
 
     AppSched_stopTimer_IgnoreAndReturn( TRUE );
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
     AppSched_startTimer_IgnoreAndReturn( TRUE );
     
-    Alarm_Activated( &msgReceived );
+    nextEvent = Clock_Alarm_Activated( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_ALARM_ACTIVE );
 }
 
 /**
- * @brief   test Deactivate_Alarm function.
+ * @brief   test Clock_Deactivate_Alarm function.
 */
-void test__Deactivate_Alarm( void )
+void test__Clock_Deactivate_Alarm( void )
 {
     APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
 
     HAL_TIM_PWM_Stop_IgnoreAndReturn( HAL_OK );
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( HAL_OK );
@@ -408,7 +439,9 @@ void test__Deactivate_Alarm( void )
     AppSched_startTimer_IgnoreAndReturn( TRUE );
     HEL_LCD_Backlight_Ignore();
     
-    Deactivate_Alarm( &msgReceived );
+    nextEvent = Clock_Deactivate_Alarm( &msgReceived );
+    
+    TEST_ASSERT_EQUAL( nextEvent.msg, CLOCK_MSG_DISPLAY );
 }
 
 /**

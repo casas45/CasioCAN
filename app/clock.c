@@ -34,17 +34,17 @@ static TIM_HandleTypeDef TIM14_Handler;
 STATIC uint8_t AlarmActivated_flg;
 
 
-STATIC void Set_Time( APP_MsgTypeDef *PtrMsgClk );
+STATIC APP_MsgTypeDef Clock_Set_Time( APP_MsgTypeDef *PtrMsgClk );
 
-STATIC void Set_Date( APP_MsgTypeDef *PtrMsgClk );
+STATIC APP_MsgTypeDef Clock_Set_Date( APP_MsgTypeDef *PtrMsgClk );
 
-STATIC void Set_Alarm( APP_MsgTypeDef *PtrMsgClk );
+STATIC APP_MsgTypeDef Clock_Set_Alarm( APP_MsgTypeDef *PtrMsgClk );
 
-STATIC void Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk );
+STATIC APP_MsgTypeDef Clock_Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk );
 
-STATIC void Alarm_Activated( APP_MsgTypeDef *PtrMsgClk );
+STATIC APP_MsgTypeDef Clock_Alarm_Activated( APP_MsgTypeDef *PtrMsgClk );
 
-STATIC void Deactivate_Alarm( APP_MsgTypeDef *PtrMsgClk );
+STATIC APP_MsgTypeDef Clock_Deactivate_Alarm( APP_MsgTypeDef *PtrMsgClk );
 
 /**
  * @brief   Function to initialize RTC module and ClkQueue.
@@ -210,14 +210,14 @@ void Clock_PeriodicTask( void )
 {
     APP_MsgTypeDef MsgClkRead = { 0 };
 
-    void ( *ClockEventsMachine[ N_CLK_EVENTS ] )( APP_MsgTypeDef *PtrMsgClk ) =
+    APP_MsgTypeDef ( *ClockEventsMachine[ N_CLK_EVENTS ] )( APP_MsgTypeDef *PtrMsgClk ) =
     {
-    Set_Time,
-    Set_Date,
-    Set_Alarm,
-    Send_Display_Msg,
-    Alarm_Activated,
-    Deactivate_Alarm
+    Clock_Set_Time,
+    Clock_Set_Date,
+    Clock_Set_Alarm,
+    Clock_Send_Display_Msg,
+    Clock_Alarm_Activated,
+    Clock_Deactivate_Alarm
     };
 
     while( ( HIL_QUEUE_isQueueEmptyISR( &ClockQueue ) == FALSE ) )
@@ -229,7 +229,7 @@ void Clock_PeriodicTask( void )
 
         if( MsgClkRead.msg < (uint8_t) N_CLK_EVENTS )
         {
-            ClockEventsMachine[ MsgClkRead.msg ]( &MsgClkRead );
+            (void) ClockEventsMachine[ MsgClkRead.msg ]( &MsgClkRead );
         }
     }
 }
@@ -242,8 +242,10 @@ void Clock_PeriodicTask( void )
  * corresponding to time from the pointer to the read msg.
  *
  * @param   PtrMsgClk [in] Pointer to the clock message read from ClkQueue.
+ * 
+ * @return The next clock event.
  */
-STATIC void Set_Time( APP_MsgTypeDef *PtrMsgClk )
+STATIC APP_MsgTypeDef Clock_Set_Time( APP_MsgTypeDef *PtrMsgClk )
 {
     HAL_StatusTypeDef Status = HAL_ERROR;
 
@@ -262,14 +264,18 @@ STATIC void Set_Time( APP_MsgTypeDef *PtrMsgClk )
     Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
     assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
+    APP_MsgTypeDef alarmMsg = {0};
+    alarmMsg.msg = CLK_MSG_NONE;
+
     if( AlarmActivated_flg == TRUE )
     {
-        APP_MsgTypeDef alarmMsg;
         alarmMsg.msg = CLOCK_MSG_DEACTIVATE_ALARM;
 
         Status = HIL_QUEUE_writeDataISR( &ClockQueue, &alarmMsg );
         assert_error( Status == TRUE, QUEUE_RET_ERROR );
     }
+
+    return alarmMsg;
 }
 
 /**
@@ -281,9 +287,11 @@ STATIC void Set_Time( APP_MsgTypeDef *PtrMsgClk )
  *
  * @param   PtrMsgClk [in] Pointer to the clock message read from ClkQueue.
  *
+ * @return The next clock event.
+ * 
  * @note    Only the last two digits of the year are used because that's how the RTC works.
  */
-STATIC void Set_Date( APP_MsgTypeDef *PtrMsgClk )
+STATIC APP_MsgTypeDef Clock_Set_Date( APP_MsgTypeDef *PtrMsgClk )
 {
     HAL_StatusTypeDef Status = HAL_ERROR;
 
@@ -303,14 +311,18 @@ STATIC void Set_Date( APP_MsgTypeDef *PtrMsgClk )
     Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
     assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
+    APP_MsgTypeDef alarmMsg = {0};
+    alarmMsg.msg = CLK_MSG_NONE;
+
     if( AlarmActivated_flg == TRUE )
     {
-        APP_MsgTypeDef alarmMsg;
         alarmMsg.msg = CLOCK_MSG_DEACTIVATE_ALARM;
 
         Status = HIL_QUEUE_writeDataISR( &ClockQueue, &alarmMsg );
         assert_error( Status == TRUE, QUEUE_RET_ERROR );
     }
+
+    return alarmMsg;
 }
 
 /**
@@ -321,8 +333,10 @@ STATIC void Set_Date( APP_MsgTypeDef *PtrMsgClk )
  * used to set the alarm in the RTC.
  *
  * @param   PtrMsgClk [in] Pointer to the clock message read from ClkQueue.
+ * 
+ * @return The next clock event.
  */
-STATIC void Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
+STATIC APP_MsgTypeDef Clock_Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
 {
     HAL_StatusTypeDef Status = HAL_ERROR;
 
@@ -331,9 +345,11 @@ STATIC void Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
     APP_MsgTypeDef nextEventDisplay;
     nextEventDisplay.msg = DISPLAY_MSG_ALARM_SET;
 
+    APP_MsgTypeDef alarmMsg  = {0};
+    alarmMsg.msg = CLK_MSG_NONE;
+
     if( AlarmActivated_flg == TRUE )
     {
-        APP_MsgTypeDef alarmMsg;
         alarmMsg.msg = CLOCK_MSG_DEACTIVATE_ALARM;
 
         Status = HIL_QUEUE_writeDataISR( &ClockQueue, &alarmMsg );
@@ -350,6 +366,8 @@ STATIC void Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
 
     Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextEventDisplay );
     assert_error( Status == TRUE, QUEUE_RET_ERROR );
+
+    return alarmMsg;
 }
 
 /**
@@ -360,8 +378,10 @@ STATIC void Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
  * And then that information is writed in the DisplayQueue.
  *
  * @param   PtrMsgClk [in] Pointer to the clock message read from ClkQueue.
+ * 
+ * @return  The next display event with the date and time parameters. 
  */
-STATIC void Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
+STATIC APP_MsgTypeDef Clock_Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
 {
     (void)PtrMsgClk;
 
@@ -391,6 +411,8 @@ STATIC void Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
     /*Write to the display queue*/
     Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &updateMsg );
     assert_error( Status == TRUE, QUEUE_RET_ERROR );
+
+    return updateMsg;
 }
 
 /**
@@ -401,14 +423,16 @@ STATIC void Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
  * write in the DisplayQueue to show the message "ALARM!!!" in the LCD.
  *
  * @param   PtrMsgClk Pointer to message clock read.
+ * 
+ * @return The next display event.
  */
-STATIC void Alarm_Activated( APP_MsgTypeDef *PtrMsgClk )
+STATIC APP_MsgTypeDef Clock_Alarm_Activated( APP_MsgTypeDef *PtrMsgClk )
 {
     (void) PtrMsgClk;
 
     uint8_t Status = FALSE;
 
-    APP_MsgTypeDef displayMsg;
+    APP_MsgTypeDef displayMsg = {0};
     displayMsg.msg = DISPLAY_MSG_ALARM_ACTIVE;
 
     AlarmActivated_flg = TRUE;  /* Set flag */
@@ -424,6 +448,8 @@ STATIC void Alarm_Activated( APP_MsgTypeDef *PtrMsgClk )
 
     Status = AppSched_startTimer( &Scheduler, TimerAlarmActiveOneSecond_ID );
     assert_error( Status == TRUE, SCHE_RET_ERROR );
+
+    return displayMsg;
 }
 
 /**
@@ -434,12 +460,14 @@ STATIC void Alarm_Activated( APP_MsgTypeDef *PtrMsgClk )
  * next event that is to update the display.
  * 
  * @param   PtrMsgClk   Pointer to the clock message read.
+ * 
+ * @return The next clock event.
 */
-STATIC void Deactivate_Alarm( APP_MsgTypeDef *PtrMsgClk )
+STATIC APP_MsgTypeDef Clock_Deactivate_Alarm( APP_MsgTypeDef *PtrMsgClk )
 {
     (void) PtrMsgClk;
 
-    APP_MsgTypeDef updateMsg;
+    APP_MsgTypeDef updateMsg  = {0};
     updateMsg.msg = CLOCK_MSG_DISPLAY;
 
     uint8_t Status = FALSE;
@@ -462,6 +490,8 @@ STATIC void Deactivate_Alarm( APP_MsgTypeDef *PtrMsgClk )
     assert_error( Status == TRUE, SCHE_RET_ERROR );
 
     HEL_LCD_Backlight( &LCD_Handler, LCD_ON );
+
+    return updateMsg;
 }
 
 /**

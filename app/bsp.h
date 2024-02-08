@@ -126,7 +126,8 @@ typedef enum
     CLOCK_MSG_DISPLAY,          /*!< Msg to update display */
     CLOCK_MSG_ALARM_ACTIVATED,  /*!< Msg to activate the alarm */
     CLOCK_MSG_DEACTIVATE_ALARM, /*!< Msg to deactivate the alarm */
-    N_CLK_EVENTS                /*!< Number of events in clock event machine*/
+    N_CLK_EVENTS,               /*!< Number of events in clock event machine*/
+    CLK_MSG_NONE
 } ClkMessages;
 
 /**
@@ -140,7 +141,8 @@ typedef enum
     DISPLAY_MSG_UPDATE = 0,         /*!< Msg to update display */
     DISPLAY_MSG_ALARM_SET,          /*!< Msg to print the A in the display */
     DISPLAY_MSG_ALARM_ACTIVE,       /*!< Msg to display the word "ALARM!!!" */
-    N_DISPLAY_EVENTS                /*!< Number of events in Display event machine*/
+    N_DISPLAY_EVENTS,               /*!< Number of events in Display event machine*/
+    DISPLAY_MSG_NONE                /*!< Element to indicate that any event is next*/
 } DisplayMessages;
 
 /**
