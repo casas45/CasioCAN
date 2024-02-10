@@ -6,6 +6,8 @@
 #include "display.h"
 #include "bsp.h"
 
+#define LCD_COLUMNS     16u
+
 #define BCD_TO_BIN( x ) ( ( ( (x) >> 4u ) * 10u ) + ( (x) & 0x0Fu ) ) /*!< Macro to conver BCD data to an integer */
 
 #define GET_UNITS( x ) ( (x) % 10u )                        /*!< Operation to get the units of x */
@@ -34,11 +36,11 @@ STATIC APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg );
 
 STATIC APP_MsgTypeDef DisplayChangeBacklightState( APP_MsgTypeDef *pDisplayMsg );
 
-STATIC void Display_AlarmValues ( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef Display_AlarmValues ( APP_MsgTypeDef *pDisplayMsg );
 
-STATIC void Display_AlarmNoConfig ( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef Display_AlarmNoConfig ( APP_MsgTypeDef *pDisplayMsg );
 
-STATIC void Display_ClearSecondLine ( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef Display_ClearSecondLine ( APP_MsgTypeDef *pDisplayMsg );
 
 STATIC void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds );
 
@@ -268,9 +270,13 @@ STATIC APP_MsgTypeDef DisplayChangeBacklightState( APP_MsgTypeDef *pDisplayMsg )
  * @brief   Display alarm values event.
  * 
  * @param   pDisplayMsg Pointer to the display message read.
+ * 
+ * @return  The next display event.
 */
-STATIC void Display_AlarmValues ( APP_MsgTypeDef *pDisplayMsg )
+STATIC APP_MsgTypeDef Display_AlarmValues ( APP_MsgTypeDef *pDisplayMsg )
 {
+    APP_MsgTypeDef nextEvent = {.msg = DISPLAY_MSG_NONE};
+
     char lcd_row_1_alarm[ LCD_CHARACTERS ];
 
     HAL_StatusTypeDef Status = HAL_ERROR;
@@ -282,6 +288,8 @@ STATIC void Display_AlarmValues ( APP_MsgTypeDef *pDisplayMsg )
 
     Status = HEL_LCD_String( &LCD_Handler, lcd_row_1_alarm );
     assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    return nextEvent;
 }
 
 /**
@@ -290,10 +298,14 @@ STATIC void Display_AlarmValues ( APP_MsgTypeDef *pDisplayMsg )
  * This function print the message "ALARM NO CONFIG" on the second line of the LCD.
  * 
  * @param   pDisplayMsg Pointer to the display message read.
+ * 
+ * @return  The next display event.
 */
-STATIC void Display_AlarmNoConfig ( APP_MsgTypeDef *pDisplayMsg )
+STATIC APP_MsgTypeDef Display_AlarmNoConfig ( APP_MsgTypeDef *pDisplayMsg )
 {
     (void) pDisplayMsg;
+
+    APP_MsgTypeDef nextEvent = {.msg = DISPLAY_MSG_NONE};
 
     const char *stringAlarm = "ALARM NO CONFIG";
     HAL_StatusTypeDef Status = HAL_ERROR;
@@ -303,6 +315,8 @@ STATIC void Display_AlarmNoConfig ( APP_MsgTypeDef *pDisplayMsg )
 
     Status = HEL_LCD_String( &LCD_Handler, stringAlarm );
     assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    return nextEvent;
 }
 
 /**
@@ -311,12 +325,16 @@ STATIC void Display_AlarmNoConfig ( APP_MsgTypeDef *pDisplayMsg )
  * This function fill the second line of the LCD with blank spaces.
  * 
  * @param   pDisplayMsg Pointer to the display message read.
+ * 
+ * @return  The next display event.
 */
-STATIC void Display_ClearSecondLine ( APP_MsgTypeDef *pDisplayMsg )
+STATIC APP_MsgTypeDef Display_ClearSecondLine( APP_MsgTypeDef *pDisplayMsg )
 {
     (void) pDisplayMsg;
 
-    const char *blankString = "                ";
+    APP_MsgTypeDef nextEvent = {.msg = DISPLAY_MSG_NONE};
+
+    const char blankString[LCD_COLUMNS] = {' '};    /* fill the string with blank spaces */
     HAL_StatusTypeDef Status = HAL_ERROR;
 
     Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 0u ); /*Set cursor in the second line */
@@ -324,6 +342,8 @@ STATIC void Display_ClearSecondLine ( APP_MsgTypeDef *pDisplayMsg )
 
     Status = HEL_LCD_String( &LCD_Handler, blankString );
     assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    return nextEvent;
 }
 
 /**

@@ -62,6 +62,53 @@ void TimeString( char *, uint8_t, uint8_t, uint8_t );
 /** @brief Reference for the private function DateString. */
 void DateString( char *, uint8_t, uint8_t, uint16_t, uint8_t );
 
+/** @brief Reference for the private function AlarmString. */
+void AlarmString( char *, uint8_t, uint8_t );
+
+/**
+ * @brief   test AlarmString function case "ALARM=00:00".
+ * 
+ * This test compares a string that has the expected result after using the function with
+ * the result of the function.
+*/
+void test__AlarmString__expected_result_ALARM_00_00( void )
+{
+    char buffer[11];        /* Buffer to hold the formatted string */
+
+    AlarmString( buffer, 0u, 0u );  /* Alarm parameters 00:00 */
+
+    TEST_ASSERT_EQUAL_STRING_LEN( "ALARM=00:00\0", buffer, 11 );
+}
+
+/**
+ * @brief   test AlarmString function case "ALARM=08:00".
+ * 
+ * This test compares a string that has the expected result after using the function with
+ * the result of the function.
+*/
+void test__AlarmString__expected_result_ALARM_06_50( void )
+{
+    char buffer[11];        /* Buffer to hold the formatted string */
+
+    AlarmString( buffer, 6u, 50u );  /* Alarm parameters 06:50 */
+
+    TEST_ASSERT_EQUAL_STRING_LEN( "ALARM=06:50\0", buffer, 11 );
+}
+
+/**
+ * @brief   test AlarmString function case "ALARM=06:50".
+ * 
+ * This test compares a string that has the expected result after using the function with
+ * the result of the function.
+*/
+void test__AlarmString__expected_result_ALARM_08_00( void )
+{
+    char buffer[11];        /* Buffer to hold the formatted string */
+
+    AlarmString( buffer, 8u, 0u );  /* Alarm parameters 08:00 */
+
+    TEST_ASSERT_EQUAL_STRING_LEN( "ALARM=08:00\0", buffer, 11 );
+}
 
 
 /**
@@ -242,4 +289,46 @@ void test__DisplayChangeBacklightState( void )
     nextEvent = DisplayChangeBacklightState( &readMessage );
 
     TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_NONE );
+}
+
+/**
+ * @brief   Unit test for the event Display_AlarmValues.
+*/
+void test__Display_AlarmValues( void )
+{
+    APP_MsgTypeDef pDisplayMsg;
+    APP_MsgTypeDef nextEventMsg;
+
+    receivedMSG.tm.tm_hour  = 6u;
+    receivedMSG.tm.tm_min   = 50u;
+
+    nextEventMsg = Display_AlarmValues( &pDisplayMsg );
+
+    TEST_ASSERT_EQUAL( nextEventMsg.msg, DISPLAY_MSG_NONE );
+}
+
+/**
+ * @brief   Unit test for the event Display_AlarmNoConfig.
+*/
+void test__Display_AlarmNoConfig( void )
+{
+    APP_MsgTypeDef pDisplayMsg = {0};
+    APP_MsgTypeDef nextEventMsg = {0};
+
+    nextEventMsg = Display_AlarmNoConfig( &pDisplayMsg );
+
+    TEST_ASSERT_EQUAL( nextEventMsg.msg, DISPLAY_MSG_NONE );
+}
+
+/**
+ * @brief   Unit test for the event Display_ClearSecondLine.
+*/
+void test__Display_ClearSecondLine( void )
+{
+    APP_MsgTypeDef pDisplayMsg = {0};
+    APP_MsgTypeDef nextEventMsg = {0};
+
+    nextEventMsg = Display_ClearSecondLine( &pDisplayMsg );
+
+    TEST_ASSERT_EQUAL( nextEventMsg.msg, DISPLAY_MSG_NONE );
 }
