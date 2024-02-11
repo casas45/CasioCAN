@@ -50,11 +50,18 @@ APP_MsgTypeDef DisplayAlarmSet( APP_MsgTypeDef * );
 */
 APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef * );
 
+/** 
+ * @brief Reference for the private function DisplayChangeBacklightState. 
+ * @return  Message with the next event.
+*/
+APP_MsgTypeDef DisplayChangeBacklightState( APP_MsgTypeDef * );
+
 /** @brief Reference for the private function TimeString. */
 void TimeString( char *, uint8_t, uint8_t, uint8_t );
 
 /** @brief Reference for the private function DateString. */
 void DateString( char *, uint8_t, uint8_t, uint16_t, uint8_t );
+
 
 
 /**
@@ -222,4 +229,17 @@ void test__DateString__month_0_and_weekday_0( void )
     DateString( str, 0, 17, 2023, 0 );
 
     TEST_ASSERT_EQUAL_STRING_LEN( "ENE,17 2023 Lu\0", str, 15);
+}
+
+void test__DisplayChangeBacklightState( void )
+{
+    APP_MsgTypeDef readMessage = {0};
+    APP_MsgTypeDef nextEvent = {0};
+    readMessage.displayBkl = LCD_ON;
+
+    HEL_LCD_Backlight_Ignore( );
+
+    nextEvent = DisplayChangeBacklightState( &readMessage );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_NONE );
 }

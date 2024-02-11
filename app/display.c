@@ -32,6 +32,8 @@ STATIC APP_MsgTypeDef DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg );
 
 STATIC APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg );
 
+STATIC APP_MsgTypeDef DisplayChangeBacklightState( APP_MsgTypeDef *pDisplayMsg );
+
 STATIC void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds );
 
 STATIC void DateString( char *string, uint8_t month, uint8_t day, uint16_t year, uint8_t weekday );
@@ -112,7 +114,8 @@ void Display_PeriodicTask( void )
     {
         UpdateDisplay,
         DisplayAlarmSet,
-        DisplayAlarmActive
+        DisplayAlarmActive,
+        DisplayChangeBacklightState
     };
 
     APP_MsgTypeDef readMsg = {0};
@@ -233,7 +236,25 @@ STATIC APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg )
     assert_error( Status == HAL_OK, LCD_RET_ERROR );
 
     return nextEvent;
-} 
+}
+
+/**
+ * @brief   Change LCD backlight state, event.
+ * 
+ * @param   pDisplayMsg Pointer to the read message.
+ * 
+ * @return  the next event, if there is one, otherwise DISPLAY_MSG_NONE.
+*/
+STATIC APP_MsgTypeDef DisplayChangeBacklightState( APP_MsgTypeDef *pDisplayMsg )
+{
+    (void) pDisplayMsg;
+
+    APP_MsgTypeDef nextEvent = { .msg = DISPLAY_MSG_NONE };
+
+    HEL_LCD_Backlight( &LCD_Handler, pDisplayMsg->displayBkl );
+
+    return nextEvent;
+}
 
 /**
  * @brief   Set the time parameters into a string with a specific format.

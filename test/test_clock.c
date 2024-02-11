@@ -141,7 +141,9 @@ void test__TimerAlarmOneSecond_Callback__buzzer_flg_FALSE( void )
 {
     HAL_TIM_PWM_Start_ExpectAnyArgsAndReturn( HAL_OK );
     HEL_LCD_Backlight_Ignore( );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
     AppSched_startTimer_ExpectAnyArgsAndReturn( TRUE );
+
     TimerAlarmOneSecond_Callback( );
 }
 
@@ -153,9 +155,10 @@ void test__TimerAlarmOneSecond_Callback__buzzer_flg_FALSE( void )
 void test__TimerAlarmOneSecond_Callback__buzzer_flg_TRUE( void )
 {
     HAL_TIM_PWM_Start_ExpectAnyArgsAndReturn( HAL_OK );
-    HEL_LCD_Backlight_Ignore( );
+    HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
     AppSched_startTimer_IgnoreAndReturn( TRUE );
     HAL_TIM_PWM_Stop_IgnoreAndReturn( HAL_OK );
+    
 
     TimerAlarmOneSecond_Callback( );
     TimerAlarmOneSecond_Callback( );
@@ -423,6 +426,7 @@ void test__Clock_Alarm_Activated( void )
     APP_MsgTypeDef msgReceived = {0};
     APP_MsgTypeDef nextEvent = {0};
 
+    HIL_QUEUE_flushQueueISR_Ignore( );
     AppSched_stopTimer_IgnoreAndReturn( TRUE );
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
     AppSched_startTimer_IgnoreAndReturn( TRUE );
@@ -441,11 +445,9 @@ void test__Clock_Deactivate_Alarm( void )
     APP_MsgTypeDef nextEvent = {0};
 
     HAL_TIM_PWM_Stop_IgnoreAndReturn( HAL_OK );
-    HIL_QUEUE_writeDataISR_IgnoreAndReturn( HAL_OK );
-    AppSched_stopTimer_IgnoreAndReturn( TRUE );
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+    AppSched_stopTimer_IgnoreAndReturn( TRUE );
     AppSched_startTimer_IgnoreAndReturn( TRUE );
-    HEL_LCD_Backlight_Ignore();
     
     nextEvent = Clock_Deactivate_Alarm( &msgReceived );
     

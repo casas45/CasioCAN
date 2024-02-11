@@ -143,5 +143,24 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htim)
 {
     (void) htim;
     __HAL_RCC_TIM6_CLK_ENABLE( );
+}
+
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
+void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef *htim)
+{
+    (void) htim;
+    
+    __HAL_RCC_GPIOC_CLK_ENABLE( );
     __HAL_RCC_TIM14_CLK_ENABLE( );
+
+    GPIO_InitTypeDef GPIO_Buzzer = {0};
+
+    /* Configuration PWM chanel C12 (buzzer) */
+    GPIO_Buzzer.Mode      = GPIO_MODE_AF_PP;
+    GPIO_Buzzer.Pull      = GPIO_PULLUP;
+    GPIO_Buzzer.Speed     = GPIO_SPEED_FREQ_HIGH;
+    GPIO_Buzzer.Pin       = GPIO_PIN_12;
+    GPIO_Buzzer.Alternate = GPIO_AF2_TIM14;
+
+    HAL_GPIO_Init( GPIOC, &GPIO_Buzzer );
 }

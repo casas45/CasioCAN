@@ -23,7 +23,7 @@ extern void safe_state( const char *file, uint32_t line, uint8_t error );
 #define PERIOD_SERIAL_TASK      10u         /*!< Serial task periodicity */
 #define PERIOD_CLOCK_TASK       50u         /*!< Clock task periodicity */
 #define PERIOD_HEARTBEAT_TASK   300u        /*!< Heartbeat task periodicity */
-#define PERIOD_WATCHDOG_TASK    160u        /*!< Watchdog task periodicity */
+#define PERIOD_WATCHDOG_TASK    150u        /*!< Watchdog task periodicity */
 #define TASKS_N                 5u          /*!< Number of tasks registered in the scheduler */
 #define TIMERS_N                3u          /*!< Number of timers registered in the scheduler */
 
@@ -100,6 +100,7 @@ typedef struct _APP_MsgTypeDef
 {
     uint8_t msg;        /*!< Store the message type to send*/
     APP_TmTypeDef tm;   /*!< time and date structure*/
+    uint8_t displayBkl; /*!< Store the next state of the LCD backlight */
 } APP_MsgTypeDef;
 
 /**
@@ -141,6 +142,7 @@ typedef enum
     DISPLAY_MSG_UPDATE = 0,         /*!< Msg to update display */
     DISPLAY_MSG_ALARM_SET,          /*!< Msg to print the A in the display */
     DISPLAY_MSG_ALARM_ACTIVE,       /*!< Msg to display the word "ALARM!!!" */
+    DISPLAY_MSG_BACKLIGHT,          /*!< Msg to change the lcd backlight state */
     N_DISPLAY_EVENTS,               /*!< Number of events in Display event machine*/
     DISPLAY_MSG_NONE                /*!< Element to indicate that any event is next*/
 } DisplayMessages;

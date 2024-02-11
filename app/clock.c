@@ -25,7 +25,8 @@ RTC_HandleTypeDef hrtc;
 /**
  * @brief   TIM14 Handle struct.
 */
-static TIM_HandleTypeDef TIM14_Handler;
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
+TIM_HandleTypeDef TIM14_Handler;
 
 /**
  * @brief   Alarm Activated Flag.
@@ -65,17 +66,8 @@ void Clock_InitTask( void )
     RTC_TimeTypeDef sTime = { 0 };
     RTC_DateTypeDef sDate = { 0 };
 
-    TIM_OC_InitTypeDef PWM_ch;
-    GPIO_InitTypeDef GPIO_InitStruct;
-
-    /* Configuration PWM chanel C12 (buzzer) */
-    GPIO_InitStruct.Mode      = GPIO_MODE_AF_PP;
-    GPIO_InitStruct.Pull      = GPIO_PULLUP;
-    GPIO_InitStruct.Speed     = GPIO_SPEED_FREQ_HIGH;
-    GPIO_InitStruct.Pin       = GPIO_PIN_12;
-    GPIO_InitStruct.Alternate = GPIO_AF2_TIM14;
-
-    HAL_GPIO_Init( GPIOC, &GPIO_InitStruct );
+    /* TIM14-PWM Configuration (Buzzer) */
+    TIM_OC_InitTypeDef PWM_ch = {0};
 
     TIM14_Handler.Instance         = TIM14;
     TIM14_Handler.Init.Prescaler   = TIM14_PRESCALER;
@@ -161,6 +153,8 @@ void ClockUpdate_Callback( void )
  */
 void TimerAlarmOneSecond_Callback( void )
 {
+    APP_MsgTypeDef displayEvent = {0};
+
     static uint8_t buzzer_flg = FALSE;
     uint8_t Status = FALSE;
 
@@ -177,7 +171,11 @@ void TimerAlarmOneSecond_Callback( void )
         buzzer_flg = TRUE;
     }
     
-    HEL_LCD_Backlight( &LCD_Handler, LCD_TOGGLE );
+    displayEvent.msg        = DISPLAY_MSG_BACKLIGHT;
+    displayEvent.displayBkl = LCD_TOGGLE;
+
+    Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &displayEvent );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
     Status = AppSched_startTimer( &Scheduler, TimerAlarmActiveOneSecond_ID );
     assert_error( Status == TRUE, SCHE_RET_ERROR );
@@ -390,7 +388,7 @@ STATIC APP_MsgTypeDef Clock_Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
     RTC_TimeTypeDef sTime = { 0 };
     RTC_DateTypeDef sDate = { 0 };
 
-    APP_MsgTypeDef updateMsg;
+    APP_MsgTypeDef updateMsg = {0};
     updateMsg.msg = DISPLAY_MSG_UPDATE;
 
     Status = HAL_RTC_GetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
@@ -437,6 +435,8 @@ STATIC APP_MsgTypeDef Clock_Alarm_Activated( APP_MsgTypeDef *PtrMsgClk )
 
     AlarmActivated_flg = TRUE;  /* Set flag */
 
+    HIL_QUEUE_flushQueueISR( &DisplayQueue );
+
     Status = AppSched_stopTimer( &Scheduler, UpdateTimerID );
     assert_error( Status == TRUE, SCHE_RET_ERROR );
 
@@ -467,6 +467,8 @@ STATIC APP_MsgTypeDef Clock_Deactivate_Alarm( APP_MsgTypeDef *PtrMsgClk )
 {
     (void) PtrMsgClk;
 
+    APP_MsgTypeDef displayEvent = {0};
+
     APP_MsgTypeDef updateMsg  = {0};
     updateMsg.msg = CLOCK_MSG_DISPLAY;
 
@@ -489,7 +491,11 @@ STATIC APP_MsgTypeDef Clock_Deactivate_Alarm( APP_MsgTypeDef *PtrMsgClk )
     Status = AppSched_startTimer( &Scheduler, UpdateTimerID ); /* restart the update timer */
     assert_error( Status == TRUE, SCHE_RET_ERROR );
 
-    HEL_LCD_Backlight( &LCD_Handler, LCD_ON );
+    displayEvent.msg        = DISPLAY_MSG_BACKLIGHT;
+    displayEvent.displayBkl = LCD_ON;
+    
+    Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &displayEvent );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
     return updateMsg;
 }
