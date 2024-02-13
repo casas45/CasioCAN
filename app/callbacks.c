@@ -14,9 +14,7 @@
 */
 void HAL_WWDG_EarlyWakeupCallback( WWDG_HandleTypeDef *hwwdg )
 {
-    (void) hwwdg;
-
-    HAL_WWDG_Refresh( &h_watchdog );
+    HAL_WWDG_Refresh( hwwdg );
     
     assert_error( 0u, WWDG_RESET_ERROR );   /* Send to the safe state */
 }

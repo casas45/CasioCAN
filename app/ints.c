@@ -54,3 +54,9 @@ void FLASH_IRQHandler( void )
 {
     assert_error( 0u, ECC_ONE_ERROR );
 }
+
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
+void RTC_TAMP_IRQHandler( void )
+{
+    HAL_RTC_AlarmIRQHandler( &hrtc );
+}

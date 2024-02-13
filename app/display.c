@@ -26,8 +26,16 @@ LCD_HandleTypeDef LCD_Handler;
 /** @brief SPI Handler */
 SPI_HandleTypeDef SPI_Handler;
 
-STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg );
+
+STATIC APP_MsgTypeDef DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg );
+
+STATIC APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg );
+
+STATIC APP_MsgTypeDef DisplayChangeBacklightState( APP_MsgTypeDef *pDisplayMsg );
+
 STATIC void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds );
+
 STATIC void DateString( char *string, uint8_t month, uint8_t day, uint16_t year, uint8_t weekday );
 
 /**
@@ -102,9 +110,12 @@ void Display_InitTask( void )
 */
 void Display_PeriodicTask( void )
 {
-    void (*DisplayEventMachine[ N_DISPLAY_EVENTS ])( APP_MsgTypeDef *DisplayMsg ) =
+    APP_MsgTypeDef (*DisplayEventMachine[ N_DISPLAY_EVENTS ])( APP_MsgTypeDef *DisplayMsg ) =
     {
-        UpdateDisplay
+        UpdateDisplay,
+        DisplayAlarmSet,
+        DisplayAlarmActive,
+        DisplayChangeBacklightState
     };
 
     APP_MsgTypeDef readMsg = {0};
@@ -118,7 +129,7 @@ void Display_PeriodicTask( void )
         
         if ( readMsg.msg < (uint8_t) N_DISPLAY_EVENTS )
         {
-            DisplayEventMachine[ readMsg.msg ]( &readMsg );
+            (void) DisplayEventMachine[ readMsg.msg ]( &readMsg );
         }
         
     }
@@ -133,12 +144,17 @@ void Display_PeriodicTask( void )
  * 
  * @param   pDisplayMsg Pointer to the read message.
  * 
+ * @return  the next event, if there is one, otherwise DISPLAY_MSG_NONE.
+ * 
  * @note The year that provides the RTC function only has the last two digits. It is necessary to add
  * the value TWO_THOUSANDS to obtain a four-digit year. Please note that this assumes we are in the
  * years 2000.
 */
-STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
+STATIC APP_MsgTypeDef UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
 {
+    APP_MsgTypeDef nextEvent = {0};
+    nextEvent.msg = DISPLAY_MSG_NONE;
+
     HAL_StatusTypeDef Status = HAL_ERROR;
 
     char lcd_row_0_date[ LCD_CHARACTERS ];
@@ -155,12 +171,89 @@ STATIC void UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
     Status = HEL_LCD_String( &LCD_Handler, lcd_row_0_date );
     assert_error( Status == HAL_OK, SPI_RET_ERROR );  
 
-
-    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 3u );
+    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 4u );
     assert_error( Status == HAL_OK, SPI_RET_ERROR );
 
     Status = HEL_LCD_String( &LCD_Handler, lcd_row_1_time );
     assert_error( Status == HAL_OK, SPI_RET_ERROR );
+
+    return nextEvent;
+}
+
+/**
+ * @brief   Display the letter A in the left-down corner.
+ * 
+ * Print the letter A in the display to indicate that the alarm is set.
+ * 
+ * @param   pDisplayMsg Pointer to read message.
+ * 
+ * @return  the next event, if there is one, otherwise DISPLAY_MSG_NONE.
+*/
+STATIC APP_MsgTypeDef DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg )
+{
+    (void) pDisplayMsg;
+
+    APP_MsgTypeDef nextEvent = {0};
+    nextEvent.msg = DISPLAY_MSG_NONE;
+
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
+    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 0u );   /*set cursor in the left-down corner */
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    Status = HEL_LCD_Data( &LCD_Handler, 'A' );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    return nextEvent;
+}
+
+/**
+ * @brief   Display the message "ALARM!!!" in the second row.
+ * 
+ * When the alarm is activated, the display shows the message "ALARM!!!" in the second line, the 
+ * message is declared as a string with four blank spaces at the beginning to clear the letter
+ * A, which is used to indicate that the alarm is set.
+ * 
+ * @param   pDisplayMsg Pointer to the read message.
+ * 
+ * @return  the next event, if there is one, otherwise DISPLAY_MSG_NONE.
+*/
+STATIC APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg )
+{
+    (void) pDisplayMsg;
+
+    APP_MsgTypeDef nextEvent = {0};
+    nextEvent.msg = DISPLAY_MSG_NONE;
+
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
+    const char *AlarmMessage = "    ALARM!!!";
+
+    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 0u );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    Status = HEL_LCD_String( &LCD_Handler, AlarmMessage );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    return nextEvent;
+}
+
+/**
+ * @brief   Change LCD backlight state, event.
+ * 
+ * @param   pDisplayMsg Pointer to the read message.
+ * 
+ * @return  the next event, if there is one, otherwise DISPLAY_MSG_NONE.
+*/
+STATIC APP_MsgTypeDef DisplayChangeBacklightState( APP_MsgTypeDef *pDisplayMsg )
+{
+    (void) pDisplayMsg;
+
+    APP_MsgTypeDef nextEvent = { .msg = DISPLAY_MSG_NONE };
+
+    HEL_LCD_Backlight( &LCD_Handler, pDisplayMsg->displayBkl );
+
+    return nextEvent;
 }
 
 /**

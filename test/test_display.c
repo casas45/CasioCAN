@@ -31,14 +31,37 @@ void tearDown( void )
 {
 }
 
-/** @brief Reference for the private function UpdateDisplay. */
-void UpdateDisplay( APP_MsgTypeDef * );
+/** 
+ * @brief Reference for the private function UpdateDisplay. 
+ * @return  Message with the next event.
+ * */
+APP_MsgTypeDef UpdateDisplay( APP_MsgTypeDef * );
+
+/** 
+ * @brief Reference for the private function DisplayAlarmSet. 
+ * 
+ * @return  Message with the next event.
+*/
+APP_MsgTypeDef DisplayAlarmSet( APP_MsgTypeDef * );
+
+/** 
+ * @brief Reference for the private function DisplayAlarmActive. 
+ * @return  Message with the next event.
+*/
+APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef * );
+
+/** 
+ * @brief Reference for the private function DisplayChangeBacklightState. 
+ * @return  Message with the next event.
+*/
+APP_MsgTypeDef DisplayChangeBacklightState( APP_MsgTypeDef * );
 
 /** @brief Reference for the private function TimeString. */
 void TimeString( char *, uint8_t, uint8_t, uint8_t );
 
 /** @brief Reference for the private function DateString. */
 void DateString( char *, uint8_t, uint8_t, uint16_t, uint8_t );
+
 
 
 /**
@@ -63,14 +86,6 @@ void test__Display_PeriodicTask__Update_Display_message( void )
 {
     APP_MsgTypeDef receivedMSG = {0};
     receivedMSG.msg         = DISPLAY_MSG_UPDATE;
-    receivedMSG.tm.tm_hour  = 0x23;
-    receivedMSG.tm.tm_min   = 0x23;
-    receivedMSG.tm.tm_sec   = 0x23;
-
-    receivedMSG.tm.tm_mday  = 0x23;
-    receivedMSG.tm.tm_mon   = RTC_MONTH_JANUARY;
-    receivedMSG.tm.tm_year  = 0x23;
-    receivedMSG.tm.tm_wday  = RTC_WEEKDAY_TUESDAY;
 
     HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( FALSE );
     HIL_QUEUE_readDataISR_ExpectAnyArgsAndReturn( FALSE );
@@ -113,6 +128,7 @@ void test__Display_PeriodicTask__Update_Display_no_valid_message( void )
 */
 void test__UpdateDisplay( void )
 {
+    APP_MsgTypeDef nextEvent = {0};
     APP_MsgTypeDef receivedMSG = {0};
     receivedMSG.msg         = DISPLAY_MSG_UPDATE;
     receivedMSG.tm.tm_hour  = 0x23;
@@ -129,7 +145,41 @@ void test__UpdateDisplay( void )
     HEL_LCD_SetCursor_ExpectAnyArgsAndReturn( HAL_OK );
     HEL_LCD_String_ExpectAnyArgsAndReturn( HAL_OK );
 
-    UpdateDisplay( &receivedMSG );
+    nextEvent = UpdateDisplay( &receivedMSG );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_NONE );
+}
+
+/**
+ * @brief   test DisplayAlarmSet function.
+*/
+void test__DisplayAlarmSet(void)
+{
+    APP_MsgTypeDef receivedMSG = {0};
+    APP_MsgTypeDef nextEvent = {0};
+
+    HEL_LCD_SetCursor_IgnoreAndReturn( TRUE );
+    HEL_LCD_Data_IgnoreAndReturn( TRUE );
+
+    nextEvent = DisplayAlarmSet( &receivedMSG );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_NONE );
+}
+
+/**
+ * @brief   test DisplayAlarmSet function.
+*/
+void test__DisplayAlarmActive(void)
+{
+    APP_MsgTypeDef receivedMSG = {0};
+    APP_MsgTypeDef nextEvent = {0};
+
+    HEL_LCD_SetCursor_IgnoreAndReturn( TRUE );
+    HEL_LCD_String_IgnoreAndReturn( TRUE );
+
+    nextEvent = DisplayAlarmActive( &receivedMSG );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_NONE );
 }
 
 /**
@@ -179,4 +229,17 @@ void test__DateString__month_0_and_weekday_0( void )
     DateString( str, 0, 17, 2023, 0 );
 
     TEST_ASSERT_EQUAL_STRING_LEN( "ENE,17 2023 Lu\0", str, 15);
+}
+
+void test__DisplayChangeBacklightState( void )
+{
+    APP_MsgTypeDef readMessage = {0};
+    APP_MsgTypeDef nextEvent = {0};
+    readMessage.displayBkl = LCD_ON;
+
+    HEL_LCD_Backlight_Ignore( );
+
+    nextEvent = DisplayChangeBacklightState( &readMessage );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_NONE );
 }

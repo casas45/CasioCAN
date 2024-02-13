@@ -181,7 +181,7 @@ void AppSched_startScheduler( AppSched_Scheduler *scheduler )
     unsigned long tickstart; 
     static unsigned long countTicks = 1;  //variable to count ticks
 
-    static uint16_t currentTick;
+    uint16_t currentTick;
     
     /*if a task is added it's mandatory add the error code */
     const App_ErrorsCode TasksError[ TASKS_N ] = 

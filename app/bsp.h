@@ -23,9 +23,9 @@ extern void safe_state( const char *file, uint32_t line, uint8_t error );
 #define PERIOD_SERIAL_TASK      10u         /*!< Serial task periodicity */
 #define PERIOD_CLOCK_TASK       50u         /*!< Clock task periodicity */
 #define PERIOD_HEARTBEAT_TASK   300u        /*!< Heartbeat task periodicity */
-#define PERIOD_WATCHDOG_TASK    160u        /*!< Watchdog task periodicity */
+#define PERIOD_WATCHDOG_TASK    150u        /*!< Watchdog task periodicity */
 #define TASKS_N                 5u          /*!< Number of tasks registered in the scheduler */
-#define TIMERS_N                1u          /*!< Number of timers registered in the scheduler */
+#define TIMERS_N                3u          /*!< Number of timers registered in the scheduler */
 
 /**
  * @brief   Variable with external linkage that is used to configure interrupt in ints.c file.
@@ -58,6 +58,13 @@ extern TIM_HandleTypeDef TIM6_Handler;
 
 /** @brief  Update Timer ID external reference */
 extern uint8_t UpdateTimerID;
+
+/** @brief  Variable to save the TimerAlarmActiveOneSecond_ID */
+extern uint8_t TimerAlarmActiveOneSecond_ID;
+
+/** @brief  Variable to save the TimerAlarmActiveOneMinute_ID ID */
+extern uint8_t TimerDeactivateAlarm_ID;
+
 
 /**
  * @brief   List of messages types.
@@ -93,6 +100,7 @@ typedef struct _APP_MsgTypeDef
 {
     uint8_t msg;        /*!< Store the message type to send*/
     APP_TmTypeDef tm;   /*!< time and date structure*/
+    uint8_t displayBkl; /*!< Store the next state of the LCD backlight */
 } APP_MsgTypeDef;
 
 /**
@@ -113,11 +121,14 @@ typedef struct _App_CanTypeDef
 /* cppcheck-suppress misra-c2012-2.4 ; this enum is only used to clasify the clock messages */
 typedef enum
 {
-    CLOCK_MSG_TIME = 0,     /*!< Msg to update RTC time */
-    CLOCK_MSG_DATE,         /*!< Msg to update RTC date */
-    CLOCK_MSG_ALARM,        /*!< Msg to update RTC alarm */
-    CLOCK_MSG_DISPLAY,      /*!< Msg to update display */
-    N_CLK_STATES            /*!< Number of events in clock event machine*/
+    CLOCK_MSG_TIME = 0,         /*!< Msg to update RTC time */
+    CLOCK_MSG_DATE,             /*!< Msg to update RTC date */
+    CLOCK_MSG_ALARM,            /*!< Msg to update RTC alarm */
+    CLOCK_MSG_DISPLAY,          /*!< Msg to update display */
+    CLOCK_MSG_ALARM_ACTIVATED,  /*!< Msg to activate the alarm */
+    CLOCK_MSG_DEACTIVATE_ALARM, /*!< Msg to deactivate the alarm */
+    N_CLK_EVENTS,               /*!< Number of events in clock event machine*/
+    CLK_MSG_NONE
 } ClkMessages;
 
 /**
@@ -129,7 +140,11 @@ typedef enum
 typedef enum
 {
     DISPLAY_MSG_UPDATE = 0,         /*!< Msg to update display */
-    N_DISPLAY_EVENTS                /*!< Number of events in Display event machine*/
+    DISPLAY_MSG_ALARM_SET,          /*!< Msg to print the A in the display */
+    DISPLAY_MSG_ALARM_ACTIVE,       /*!< Msg to display the word "ALARM!!!" */
+    DISPLAY_MSG_BACKLIGHT,          /*!< Msg to change the lcd backlight state */
+    N_DISPLAY_EVENTS,               /*!< Number of events in Display event machine*/
+    DISPLAY_MSG_NONE                /*!< Element to indicate that any event is next*/
 } DisplayMessages;
 
 /**
@@ -160,7 +175,8 @@ typedef enum _App_ErrorsCode
     TIM_FUNC_ERROR,
     ECC_ONE_ERROR,
     ECC_TWO_ERROR,
-    LCD_RET_ERROR
+    LCD_RET_ERROR,
+    TIM_RET_ERROR
 
 } App_ErrorsCode;
 

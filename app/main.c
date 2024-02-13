@@ -13,6 +13,7 @@
 
 #define TICK_VAL                5u          /*!< Tick value to scheduler */
 #define ONE_SECOND              1000u       /*!< Value of 1000 ms */
+#define ONE_MINUTE              60000u      /*!< Value of 60000 ms */
 #define WINDOW_VALUE_WWDG       100u        /*!< Watchdog window value */
 #define COUNTER_VALUE_WWDG      127u        /*!< Watchdog counter value */
 #define PERIOD_DISPLAY_TASK     100u        /*!< Display task periodicity */
@@ -32,6 +33,12 @@ WWDG_HandleTypeDef h_watchdog;
 
 /** @brief  Variable to save the update timer ID */
 uint8_t UpdateTimerID;
+
+/** @brief  Variable to save the TimerAlarmActiveOneSecond_ID */
+uint8_t TimerAlarmActiveOneSecond_ID;
+
+/** @brief  Variable to save the TimerAlarmActiveOneMinute_ID */
+uint8_t TimerDeactivateAlarm_ID;
 
 /** @brief  TIM6 Handler struct */
 TIM_HandleTypeDef TIM6_Handler;
@@ -83,6 +90,12 @@ int main( void )
     
     Status = AppSched_startTimer( &Scheduler, UpdateTimerID );
     assert_error( Status == TRUE, SCHE_RET_ERROR );
+
+    /*Software timer to blink the lcd backlight and the buzzer when the alarm is active  */
+    TimerAlarmActiveOneSecond_ID = AppSched_registerTimer( &Scheduler, ONE_SECOND, TimerAlarmOneSecond_Callback );
+
+    /*Software timer to know when is time to deactivate the alarm */
+    TimerDeactivateAlarm_ID = AppSched_registerTimer( &Scheduler, ONE_MINUTE, TimerDeactivateAlarm_Callback );
 
     AppSched_startScheduler( &Scheduler );
 
