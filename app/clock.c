@@ -29,10 +29,16 @@ RTC_HandleTypeDef hrtc;
 TIM_HandleTypeDef TIM14_Handler;
 
 /**
- * @brief   Alarm Activated Flag.
+ * @brief   Alarm activated flag.
 */
 /* cppcheck-suppress misra-c2012-8.4 ; false warning, the macro STATIC makes the variable static */
-STATIC uint8_t AlarmActivated_flg;
+STATIC uint8_t AlarmActivated_flg = FALSE;
+
+/**
+ * @brief   Alarm set flag.
+*/
+/* cppcheck-suppress misra-c2012-8.4 ; false warning, the macro STATIC makes the variable static */
+STATIC uint8_t AlarmSet_flg = FALSE;
 
 
 STATIC APP_MsgTypeDef Clock_Set_Time( APP_MsgTypeDef *PtrMsgClk );
@@ -51,7 +57,7 @@ STATIC APP_MsgTypeDef Clock_ButtonPressed( APP_MsgTypeDef *PtrMsgClk );
 
 STATIC APP_MsgTypeDef Clock_ButtonReleased( APP_MsgTypeDef *PtrMsgClk );
 
-STATIC void Clock_GetAlarm( APP_MsgTypeDef *PtrMsgClk );
+STATIC APP_MsgTypeDef Clock_GetAlarm( APP_MsgTypeDef *PtrMsgClk );
 
 /**
  * @brief   Function to initialize RTC module and ClkQueue.
@@ -98,7 +104,7 @@ void Clock_InitTask( void )
 
     /* Button 1 initialization */
     GPIO_InitStruct.Mode    = GPIO_MODE_IT_RISING_FALLING;
-    GPIO_InitStruct.Speed   = GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Speed   = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Pull    = GPIO_NOPULL;
     GPIO_InitStruct.Pin     = GPIO_PIN_5;
 
@@ -236,7 +242,8 @@ void Clock_PeriodicTask( void )
     Clock_Alarm_Activated,
     Clock_Deactivate_Alarm,
     Clock_ButtonPressed,
-    Clock_ButtonReleased
+    Clock_ButtonReleased,
+    Clock_GetAlarm
     };
 
     while( ( HIL_QUEUE_isQueueEmptyISR( &ClockQueue ) == FALSE ) )
@@ -367,6 +374,8 @@ STATIC APP_MsgTypeDef Clock_Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
     APP_MsgTypeDef alarmMsg  = {0};
     alarmMsg.msg = CLK_MSG_NONE;
 
+    AlarmSet_flg = TRUE;    
+
     if( AlarmActivated_flg == TRUE )
     {
         alarmMsg.msg = CLOCK_MSG_DEACTIVATE_ALARM;
@@ -452,7 +461,6 @@ STATIC APP_MsgTypeDef Clock_Alarm_Activated( APP_MsgTypeDef *PtrMsgClk )
     uint8_t Status = FALSE;
 
     APP_MsgTypeDef displayMsg = {0};
-    displayMsg.msg = DISPLAY_MSG_ALARM_ACTIVE;
 
     AlarmActivated_flg = TRUE;  /* Set flag */
 
@@ -461,6 +469,11 @@ STATIC APP_MsgTypeDef Clock_Alarm_Activated( APP_MsgTypeDef *PtrMsgClk )
     Status = AppSched_stopTimer( &Scheduler, UpdateTimerID );
     assert_error( Status == TRUE, SCHE_RET_ERROR );
 
+    displayMsg.msg = DISPLAY_MSG_CLEAR_SECOND_LINE;
+    Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &displayMsg );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
+
+    displayMsg.msg = DISPLAY_MSG_ALARM_ACTIVE;
     Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &displayMsg );
     assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
@@ -496,6 +509,7 @@ STATIC APP_MsgTypeDef Clock_Deactivate_Alarm( APP_MsgTypeDef *PtrMsgClk )
     uint8_t Status = FALSE;
 
     AlarmActivated_flg = FALSE;
+    AlarmSet_flg = FALSE;
 
     Status = HAL_TIM_PWM_Stop( &TIM14_Handler, TIM_CHANNEL_1 ); /* Turn off the buzzer */
     assert_error( Status == HAL_OK, TIM_RET_ERROR );
@@ -525,76 +539,87 @@ STATIC APP_MsgTypeDef Clock_Deactivate_Alarm( APP_MsgTypeDef *PtrMsgClk )
  * @brief   Button pressed event.
  * 
  * @param   PtrMsgClk Pointer to the clock message read.
+ * 
+ * @retval  The next event, can be an event of the clock or display.
 */
 STATIC APP_MsgTypeDef Clock_ButtonPressed( APP_MsgTypeDef *PtrMsgClk )
 {
     (void) PtrMsgClk;
     
-    APP_MsgTypeDef nextEvent;
+    APP_MsgTypeDef nextEvent = {0};
 
-    uint8_t Status = FALSE;
+    uint8_t Status = FALSE;    
 
     Status = AppSched_stopTimer( &Scheduler, UpdateTimerID );
     assert_error( Status == TRUE, SCHE_RET_ERROR );
 
-    if( flg_Alarm_Active == TRUE )
+    if( AlarmActivated_flg == TRUE )
     {
-        nextEvent.msg = CLOCK_DEACTIVATE_ALARM;                         /* Write deactivate alarm event */
+        nextEvent.msg = CLOCK_MSG_DEACTIVATE_ALARM;                         /* Write deactivate alarm event */
 
         Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
         assert_error( Status == TRUE, QUEUE_RET_ERROR );
     }
-    else if( flg_Alarm_Set == TRUE )
+    else if( AlarmSet_flg == TRUE )
     {
         nextEvent.msg = CLOCK_MSG_GET_ALARM;
 
-        Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );     /* ALARM=XX:XX message*/
+        Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );   
         assert_error( Status == TRUE, QUEUE_RET_ERROR );
     }
     else        /* Alarm no config */
     {
-        nextEvent.msg = DISPLAY_MSG_ALARM_NO_CONF;
+        nextEvent.msg = DISPLAY_MSG_CLEAR_SECOND_LINE;
+        Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextEvent );  
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
-        Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextEvent );     /* ALARM NO CONFIG message */
+        nextEvent.msg = DISPLAY_MSG_ALARM_NO_CONF;
+        Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextEvent ); 
         assert_error( Status == TRUE, QUEUE_RET_ERROR );
     }
+
+    return nextEvent;
 }
 
 /**
  * @brief   Button released event.
  * 
  * @param   PtrMsgClk Pointer to the clock message read.
+ * 
+ * @retval  The next display event.
 */
 STATIC APP_MsgTypeDef Clock_ButtonReleased( APP_MsgTypeDef *PtrMsgClk )
 {
     (void) PtrMsgClk;
 
-    uint8_t Status = FALSE;
+    APP_MsgTypeDef updateMsg = {0};
+    APP_MsgTypeDef nextDisplayEvent = { .msg = DISPLAY_MSG_NONE };
 
-    APP_MsgTypeDef updateMsg;
-    
-    updateMsg.msg = DISPLAY_CLEAR_SECOND_LINE;
-
-    Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &updateMsg );
-    assert_error( Status == HAL_OK, QUEUE_RET_ERROR );
-
-    Status = AppSched_startTimer( &Scheduler, UpdateTimerID );
-    assert_error( Status == TRUE, SCHE_RET_ERROR );
-
-    updateMsg.msg = CLOCK_MSG_DISPLAY;
-
-    Status = HIL_QUEUE_writeDataISR( &ClockQueue, &updateMsg );
-    assert_error( Status == TRUE, QUEUE_RET_ERROR );
-
-    if( flg_Alarm_Set == TRUE )
+    /* if the button is still pressed dont do anything, this is used to avoid false button releases */
+    if( HAL_GPIO_ReadPin( GPIOB, GPIO_PIN_5 ) == GPIO_PIN_SET ) 
     {
-        updateMsg.msg = ;       /* Print the letter A again */
+        uint8_t Status = FALSE;
 
-        Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &updateMsg );
+        nextDisplayEvent.msg = DISPLAY_MSG_CLEAR_SECOND_LINE;
+        Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextDisplayEvent );
         assert_error( Status == TRUE, QUEUE_RET_ERROR );
-        
+
+        updateMsg.msg = CLOCK_MSG_DISPLAY;
+        Status = HIL_QUEUE_writeDataISR( &ClockQueue, &updateMsg );
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );
+
+        Status = AppSched_startTimer( &Scheduler, UpdateTimerID ); 
+        assert_error( Status == TRUE, SCHE_RET_ERROR );
+
+        if( AlarmSet_flg == TRUE )
+        {
+            nextDisplayEvent.msg = DISPLAY_MSG_ALARM_SET;       /* Print the letter A again */
+            Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextDisplayEvent );
+            assert_error( Status == TRUE, QUEUE_RET_ERROR );
+        }
     }
     
+    return nextDisplayEvent;
 }
 
 /**
@@ -603,8 +628,10 @@ STATIC APP_MsgTypeDef Clock_ButtonReleased( APP_MsgTypeDef *PtrMsgClk )
  * This function get the alarm parameter and send them to the display queue to show them.
  * 
  * @param   PtrMsgClk Pointer to the read message.
+ * 
+ * @retval  The next display event.
 */
-STATIC void Clock_GetAlarm( APP_MsgTypeDef *PtrMsgClk )
+STATIC APP_MsgTypeDef Clock_GetAlarm( APP_MsgTypeDef *PtrMsgClk )
 {
     (void) PtrMsgClk;
 
@@ -616,12 +643,18 @@ STATIC void Clock_GetAlarm( APP_MsgTypeDef *PtrMsgClk )
     Status = HAL_RTC_GetAlarm( &hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
-    alarmMsg.msg        = DISPLAY_ALARM_VALUES;
+    alarmMsg.msg = DISPLAY_MSG_CLEAR_SECOND_LINE;
+    Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &alarmMsg );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
+
+    alarmMsg.msg        = DISPLAY_MSG_ALARM_VALUES;
     alarmMsg.tm.tm_hour = sAlarm.AlarmTime.Hours;
     alarmMsg.tm.tm_min  = sAlarm.AlarmTime.Minutes;
     
     Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &alarmMsg );
     assert_error( Status == TRUE, QUEUE_RET_ERROR );
+
+    return alarmMsg;
 }
 
 /**
@@ -652,6 +685,8 @@ void HAL_RTC_AlarmAEventCallback( RTC_HandleTypeDef *hrtc )
  * 
  * This callback is called when the button_1 is pressed, and here is written the event ButtonPressed
  * in the ClockQueue.
+ * 
+ * @param   GPIO_Pin Specifies the port pin connected to corresponding EXTI line.
 */
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
 void HAL_GPIO_EXTI_Falling_Callback( uint16_t GPIO_Pin )
@@ -672,6 +707,8 @@ void HAL_GPIO_EXTI_Falling_Callback( uint16_t GPIO_Pin )
  * 
  * This callback is called when the button_1 is released, and here is written the event ButtonReleased
  * in the ClockQueue.
+ * 
+ * @param   GPIO_Pin Specifies the port pin connected to corresponding EXTI line.
 */
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
 void HAL_GPIO_EXTI_Rising_Callback( uint16_t GPIO_Pin )

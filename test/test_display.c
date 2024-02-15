@@ -32,29 +32,47 @@ void tearDown( void )
 }
 
 /** 
- * @brief Reference for the private function UpdateDisplay. 
+ * @brief Reference for the private function Display_Update. 
  * @return  Message with the next event.
  * */
-APP_MsgTypeDef UpdateDisplay( APP_MsgTypeDef * );
+APP_MsgTypeDef Display_Update( APP_MsgTypeDef * );
 
 /** 
- * @brief Reference for the private function DisplayAlarmSet. 
+ * @brief Reference for the private function Display_AlarmSet. 
  * 
  * @return  Message with the next event.
 */
-APP_MsgTypeDef DisplayAlarmSet( APP_MsgTypeDef * );
+APP_MsgTypeDef Display_AlarmSet( APP_MsgTypeDef * );
 
 /** 
- * @brief Reference for the private function DisplayAlarmActive. 
+ * @brief Reference for the private function Display_AlarmActive. 
  * @return  Message with the next event.
 */
-APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef * );
+APP_MsgTypeDef Display_AlarmActive( APP_MsgTypeDef * );
 
 /** 
- * @brief Reference for the private function DisplayChangeBacklightState. 
+ * @brief Reference for the private function Display_ChangeBacklightState. 
  * @return  Message with the next event.
 */
-APP_MsgTypeDef DisplayChangeBacklightState( APP_MsgTypeDef * );
+APP_MsgTypeDef Display_ChangeBacklightState( APP_MsgTypeDef * );
+
+/** 
+ * @brief Reference for the private function Display_AlarmValues. 
+ * @return  Message with the next event.
+*/
+APP_MsgTypeDef Display_AlarmValues( APP_MsgTypeDef * );
+
+/** 
+ * @brief Reference for the private function Display_AlarmNoConfig. 
+ * @return  Message with the next event.
+*/
+APP_MsgTypeDef Display_AlarmNoConfig( APP_MsgTypeDef * );
+
+/** 
+ * @brief Reference for the private function Display_ClearSecondLine. 
+ * @return  Message with the next event.
+*/
+APP_MsgTypeDef Display_ClearSecondLine( APP_MsgTypeDef * );
 
 /** @brief Reference for the private function TimeString. */
 void TimeString( char *, uint8_t, uint8_t, uint8_t );
@@ -171,7 +189,7 @@ void test__Display_PeriodicTask__Update_Display_no_valid_message( void )
 }
 
 /**
- * @brief Test UpdateDisplay.
+ * @brief Test Display_Update.
 */
 void test__UpdateDisplay( void )
 {
@@ -192,13 +210,13 @@ void test__UpdateDisplay( void )
     HEL_LCD_SetCursor_ExpectAnyArgsAndReturn( HAL_OK );
     HEL_LCD_String_ExpectAnyArgsAndReturn( HAL_OK );
 
-    nextEvent = UpdateDisplay( &receivedMSG );
+    nextEvent = Display_Update( &receivedMSG );
 
     TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_NONE );
 }
 
 /**
- * @brief   test DisplayAlarmSet function.
+ * @brief   test Display_AlarmSet function.
 */
 void test__DisplayAlarmSet(void)
 {
@@ -208,13 +226,13 @@ void test__DisplayAlarmSet(void)
     HEL_LCD_SetCursor_IgnoreAndReturn( TRUE );
     HEL_LCD_Data_IgnoreAndReturn( TRUE );
 
-    nextEvent = DisplayAlarmSet( &receivedMSG );
+    nextEvent = Display_AlarmSet( &receivedMSG );
 
     TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_NONE );
 }
 
 /**
- * @brief   test DisplayAlarmSet function.
+ * @brief   test Display_AlarmSet function.
 */
 void test__DisplayAlarmActive(void)
 {
@@ -224,7 +242,7 @@ void test__DisplayAlarmActive(void)
     HEL_LCD_SetCursor_IgnoreAndReturn( TRUE );
     HEL_LCD_String_IgnoreAndReturn( TRUE );
 
-    nextEvent = DisplayAlarmActive( &receivedMSG );
+    nextEvent = Display_AlarmActive( &receivedMSG );
 
     TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_NONE );
 }
@@ -278,6 +296,12 @@ void test__DateString__month_0_and_weekday_0( void )
     TEST_ASSERT_EQUAL_STRING_LEN( "ENE,17 2023 Lu\0", str, 15);
 }
 
+/**
+ * @brief   test Display_ChangeBacklightState event.
+ * 
+ * This function change the backlight state and return a message with the next event, that its a idle
+ * state called DISPLAY_MSG_NONE.
+*/
 void test__DisplayChangeBacklightState( void )
 {
     APP_MsgTypeDef readMessage = {0};
@@ -286,7 +310,7 @@ void test__DisplayChangeBacklightState( void )
 
     HEL_LCD_Backlight_Ignore( );
 
-    nextEvent = DisplayChangeBacklightState( &readMessage );
+    nextEvent = Display_ChangeBacklightState( &readMessage );
 
     TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_NONE );
 }
@@ -299,8 +323,11 @@ void test__Display_AlarmValues( void )
     APP_MsgTypeDef pDisplayMsg;
     APP_MsgTypeDef nextEventMsg;
 
-    receivedMSG.tm.tm_hour  = 6u;
-    receivedMSG.tm.tm_min   = 50u;
+    pDisplayMsg.tm.tm_hour  = 6u;
+    pDisplayMsg.tm.tm_min   = 50u;
+
+    HEL_LCD_SetCursor_IgnoreAndReturn( HAL_OK );
+    HEL_LCD_String_IgnoreAndReturn( HAL_OK );
 
     nextEventMsg = Display_AlarmValues( &pDisplayMsg );
 
@@ -315,6 +342,9 @@ void test__Display_AlarmNoConfig( void )
     APP_MsgTypeDef pDisplayMsg = {0};
     APP_MsgTypeDef nextEventMsg = {0};
 
+    HEL_LCD_SetCursor_IgnoreAndReturn( HAL_OK );
+    HEL_LCD_String_IgnoreAndReturn( HAL_OK );
+
     nextEventMsg = Display_AlarmNoConfig( &pDisplayMsg );
 
     TEST_ASSERT_EQUAL( nextEventMsg.msg, DISPLAY_MSG_NONE );
@@ -328,7 +358,67 @@ void test__Display_ClearSecondLine( void )
     APP_MsgTypeDef pDisplayMsg = {0};
     APP_MsgTypeDef nextEventMsg = {0};
 
+    HEL_LCD_SetCursor_IgnoreAndReturn( HAL_OK );
+    HEL_LCD_String_IgnoreAndReturn( HAL_OK );
+
     nextEventMsg = Display_ClearSecondLine( &pDisplayMsg );
+
+    TEST_ASSERT_EQUAL( nextEventMsg.msg, DISPLAY_MSG_NONE );
+}
+
+/**
+ * @brief   Unit test for the Display_AlarmValues function.
+ * 
+ * This event return the a message of type DISPLAY_MSG_NONE, that is interpretaded as a
+ * an idle state. 
+*/
+void test__Display_AlarmValues__return_msg_with_DISPLAY_MSG_NONE(void)
+{
+    APP_MsgTypeDef pDisplayMsg = {0};
+    APP_MsgTypeDef nextEventMsg = {0};
+
+    HEL_LCD_SetCursor_IgnoreAndReturn( HAL_OK );
+    HEL_LCD_String_IgnoreAndReturn( HAL_OK );
+
+    nextEventMsg = Display_AlarmValues( &pDisplayMsg );
+
+    TEST_ASSERT_EQUAL( nextEventMsg.msg, DISPLAY_MSG_NONE );
+}
+
+/**
+ * @brief   Unit test for the Display_ClearSecondLine function.
+ * 
+ * his event return the a message of type DISPLAY_MSG_NONE, that is interpretaded as a
+ * an idle state. 
+*/
+void test__Display_ClearSecondLine__return_msg_with_DISPLAY_MSG_NONE(void)
+{
+    APP_MsgTypeDef pDisplayMsg = {0};
+    APP_MsgTypeDef nextEventMsg = {0};
+
+    HEL_LCD_SetCursor_IgnoreAndReturn( HAL_OK );
+    HEL_LCD_String_IgnoreAndReturn( HAL_OK );
+
+    nextEventMsg = Display_ClearSecondLine( &pDisplayMsg );
+
+    TEST_ASSERT_EQUAL( nextEventMsg.msg, DISPLAY_MSG_NONE );
+}
+
+/**
+ * @brief   Unit test for the Display_AlarmActive function.
+ * 
+ * his event return the a message of type DISPLAY_MSG_NONE, that is interpretaded as a
+ * an idle state. 
+*/
+void test__Display_AlarmActive__return_msg_with_DISPLAY_MSG_NONE(void)
+{
+    APP_MsgTypeDef pDisplayMsg = {0};
+    APP_MsgTypeDef nextEventMsg = {0};
+
+    HEL_LCD_SetCursor_IgnoreAndReturn( HAL_OK );
+    HEL_LCD_String_IgnoreAndReturn( HAL_OK );
+
+    nextEventMsg = Display_AlarmActive( &pDisplayMsg );
 
     TEST_ASSERT_EQUAL( nextEventMsg.msg, DISPLAY_MSG_NONE );
 }

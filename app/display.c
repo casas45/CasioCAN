@@ -6,8 +6,6 @@
 #include "display.h"
 #include "bsp.h"
 
-#define LCD_COLUMNS     16u
-
 #define BCD_TO_BIN( x ) ( ( ( (x) >> 4u ) * 10u ) + ( (x) & 0x0Fu ) ) /*!< Macro to conver BCD data to an integer */
 
 #define GET_UNITS( x ) ( (x) % 10u )                        /*!< Operation to get the units of x */
@@ -28,19 +26,19 @@ LCD_HandleTypeDef LCD_Handler;
 /** @brief SPI Handler */
 SPI_HandleTypeDef SPI_Handler;
 
-STATIC APP_MsgTypeDef UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef Display_Update( APP_MsgTypeDef *pDisplayMsg );
 
-STATIC APP_MsgTypeDef DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef Display_AlarmSet( APP_MsgTypeDef *pDisplayMsg );
 
-STATIC APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef Display_AlarmActive( APP_MsgTypeDef *pDisplayMsg );
 
-STATIC APP_MsgTypeDef DisplayChangeBacklightState( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef Display_ChangeBacklightState( APP_MsgTypeDef *pDisplayMsg );
 
-STATIC APP_MsgTypeDef Display_AlarmValues ( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef Display_AlarmValues( APP_MsgTypeDef *pDisplayMsg );
 
-STATIC APP_MsgTypeDef Display_AlarmNoConfig ( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef Display_AlarmNoConfig( APP_MsgTypeDef *pDisplayMsg );
 
-STATIC APP_MsgTypeDef Display_ClearSecondLine ( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef Display_ClearSecondLine( APP_MsgTypeDef *pDisplayMsg );
 
 STATIC void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds );
 
@@ -122,10 +120,13 @@ void Display_PeriodicTask( void )
 {
     APP_MsgTypeDef (*DisplayEventMachine[ N_DISPLAY_EVENTS ])( APP_MsgTypeDef *DisplayMsg ) =
     {
-        UpdateDisplay,
-        DisplayAlarmSet,
-        DisplayAlarmActive,
-        DisplayChangeBacklightState
+        Display_Update,
+        Display_AlarmSet,
+        Display_AlarmActive,
+        Display_ChangeBacklightState,
+        Display_AlarmNoConfig,
+        Display_AlarmValues,
+        Display_ClearSecondLine
     };
 
     APP_MsgTypeDef readMsg = {0};
@@ -160,7 +161,7 @@ void Display_PeriodicTask( void )
  * the value TWO_THOUSANDS to obtain a four-digit year. Please note that this assumes we are in the
  * years 2000.
 */
-STATIC APP_MsgTypeDef UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
+STATIC APP_MsgTypeDef Display_Update ( APP_MsgTypeDef *pDisplayMsg )
 {
     APP_MsgTypeDef nextEvent = {0};
     nextEvent.msg = DISPLAY_MSG_NONE;
@@ -199,7 +200,7 @@ STATIC APP_MsgTypeDef UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
  * 
  * @return  the next event, if there is one, otherwise DISPLAY_MSG_NONE.
 */
-STATIC APP_MsgTypeDef DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg )
+STATIC APP_MsgTypeDef Display_AlarmSet( APP_MsgTypeDef *pDisplayMsg )
 {
     (void) pDisplayMsg;
 
@@ -228,7 +229,7 @@ STATIC APP_MsgTypeDef DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg )
  * 
  * @return  the next event, if there is one, otherwise DISPLAY_MSG_NONE.
 */
-STATIC APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg )
+STATIC APP_MsgTypeDef Display_AlarmActive( APP_MsgTypeDef *pDisplayMsg )
 {
     (void) pDisplayMsg;
 
@@ -255,7 +256,7 @@ STATIC APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg )
  * 
  * @return  the next event, if there is one, otherwise DISPLAY_MSG_NONE.
 */
-STATIC APP_MsgTypeDef DisplayChangeBacklightState( APP_MsgTypeDef *pDisplayMsg )
+STATIC APP_MsgTypeDef Display_ChangeBacklightState( APP_MsgTypeDef *pDisplayMsg )
 {
     (void) pDisplayMsg;
 
@@ -334,7 +335,8 @@ STATIC APP_MsgTypeDef Display_ClearSecondLine( APP_MsgTypeDef *pDisplayMsg )
 
     APP_MsgTypeDef nextEvent = {.msg = DISPLAY_MSG_NONE};
 
-    const char blankString[LCD_COLUMNS] = {' '};    /* fill the string with blank spaces */
+    const char *blankString = "                ";    /* string with 16 blank spaces */
+    
     HAL_StatusTypeDef Status = HAL_ERROR;
 
     Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 0u ); /*Set cursor in the second line */
@@ -442,7 +444,7 @@ STATIC void DateString( char *string, uint8_t month, uint8_t day, uint16_t year,
  * @param[in]   hours   The hours component of the alarm.
  * @param[in]   minutes The minutes component of the alarm.
  * 
- * @note The output string must have sufficient space (at least 11 characters) to accommodate the 
+ * @note The output string must have sufficient space (at least 12 characters) to accommodate the 
  * formatted alarm string.
 */
 STATIC void AlarmString( char *string, unsigned char hours, unsigned char minutes )
@@ -455,7 +457,8 @@ STATIC void AlarmString( char *string, unsigned char hours, unsigned char minute
     string[5]  = '=';
     string[6]  = GET_TENS(hours) + UPSET_ASCII_NUM;
     string[7]  = GET_UNITS(hours) + UPSET_ASCII_NUM;
-    string[8]  = GET_TENS(minutes) + UPSET_ASCII_NUM;
-    string[9]  = GET_UNITS(minutes) + UPSET_ASCII_NUM;
-    string[10] = '\0';
+    string[8]  = ':';
+    string[9]  = GET_TENS(minutes) + UPSET_ASCII_NUM;
+    string[10]  = GET_UNITS(minutes) + UPSET_ASCII_NUM;
+    string[11] = '\0';
 }
