@@ -182,7 +182,9 @@ typedef enum _App_ErrorsCode
     ECC_ONE_ERROR,
     ECC_TWO_ERROR,
     LCD_RET_ERROR,
-    TIM_RET_ERROR
+    TIM_RET_ERROR,
+    DMA_RET_ERROR,
+    ADC_RET_ERROR
 
 } App_ErrorsCode;
 

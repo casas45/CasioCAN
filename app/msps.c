@@ -145,6 +145,7 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htim)
 {
     (void) htim;
     __HAL_RCC_TIM6_CLK_ENABLE( );
+    __HAL_RCC_TIM2_CLK_ENABLE( );
 }
 
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
