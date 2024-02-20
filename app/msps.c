@@ -144,8 +144,11 @@ void HEL_LCD_MspInit( LCD_HandleTypeDef *hlcd )
 void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htim)
 {
     (void) htim;
-    __HAL_RCC_TIM6_CLK_ENABLE( );
     __HAL_RCC_TIM2_CLK_ENABLE( );
+    __HAL_RCC_DMA1_CLK_ENABLE( );
+
+    
+    __HAL_RCC_TIM6_CLK_ENABLE( );
 }
 
 /* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
@@ -166,4 +169,20 @@ void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef *htim)
     GPIO_Buzzer.Alternate = GPIO_AF2_TIM14;
 
     HAL_GPIO_Init( GPIOC, &GPIO_Buzzer );
+}
+
+/* cppcheck-suppress misra-c2012-8.4 ; its external linkage is declared at HAL library */
+void HAL_ADC_MspInit( ADC_HandleTypeDef* hadc )
+{
+    (void) hadc;
+
+    GPIO_InitTypeDef GPIO_InitStruct;
+
+    __HAL_RCC_ADC_CLK_ENABLE( );
+    __GPIOA_CLK_ENABLE( );
+
+    GPIO_InitStruct.Pin     = GPIO_PIN_0 | GPIO_PIN_1;
+    GPIO_InitStruct.Mode    = GPIO_MODE_ANALOG;
+    GPIO_InitStruct.Pull    = GPIO_NOPULL;
+    HAL_GPIO_Init( GPIOA, &GPIO_InitStruct );
 }

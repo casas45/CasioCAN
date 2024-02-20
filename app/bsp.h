@@ -24,7 +24,9 @@ extern void safe_state( const char *file, uint32_t line, uint8_t error );
 #define PERIOD_CLOCK_TASK       50u         /*!< Clock task periodicity */
 #define PERIOD_HEARTBEAT_TASK   300u        /*!< Heartbeat task periodicity */
 #define PERIOD_WATCHDOG_TASK    150u        /*!< Watchdog task periodicity */
-#define TASKS_N                 5u          /*!< Number of tasks registered in the scheduler */
+#define PERIOD_DISPLAY_TASK     100u        /*!< Display task periodicity */
+#define PERIOD_LCD_TASK         55u         /*!< Task to control LCD intensity and contrast periodicity */
+#define TASKS_N                 6u          /*!< Number of tasks registered in the scheduler */
 #define TIMERS_N                3u          /*!< Number of timers registered in the scheduler */
 
 /**
@@ -176,6 +178,7 @@ typedef enum _App_ErrorsCode
     TASK_SERIAL_ERROR,
     TASK_CLOCK_ERROR,
     TASK_DISPLAY_ERROR,
+    TASK_LCD_ERROR,
     CAN_FUNC_ERROR,
     SPI_FUNC_ERROR,
     TIM_FUNC_ERROR,

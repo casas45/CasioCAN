@@ -10,13 +10,13 @@
 #include "serial.h"
 #include "clock.h"
 #include "display.h"
+#include "analogs.h"
 
 #define TICK_VAL                5u          /*!< Tick value to scheduler */
 #define ONE_SECOND              1000u       /*!< Value of 1000 ms */
 #define ONE_MINUTE              60000u      /*!< Value of 60000 ms */
 #define WINDOW_VALUE_WWDG       127u        /*!< Watchdog window value */
 #define COUNTER_VALUE_WWDG      127u        /*!< Watchdog counter value */
-#define PERIOD_DISPLAY_TASK     100u        /*!< Display task periodicity */
 #define LEDS                    0xFFu       /*!< define to initialize the 8 LEDs */
 #define SAFE_STATE              1u          /*!< safe state value */      
 
@@ -82,6 +82,9 @@ int main( void )
     Status = AppSched_registerTask( &Scheduler, Display_InitTask, Display_PeriodicTask, PERIOD_DISPLAY_TASK );
     assert_error( Status != FALSE, SCHE_RET_ERROR );
 
+    Status = AppSched_registerTask( &Scheduler, Analogs_Init, Display_LcdTask, PERIOD_LCD_TASK );
+    assert_error( Status != FALSE, SCHE_RET_ERROR );
+    
     Status = AppSched_registerTask( &Scheduler, Watchdog_InitTask, Watchdog_PeriodicTask, PERIOD_WATCHDOG_TASK );
     assert_error( Status != FALSE, SCHE_RET_ERROR );
 
@@ -145,7 +148,7 @@ static void Watchdog_InitTask( void )
 {
     HAL_StatusTypeDef Status = HAL_ERROR;
 
-    __HAL_RCC_WWDG_CLK_ENABLE( );
+    //__HAL_RCC_WWDG_CLK_ENABLE( );
 
     h_watchdog.Instance         = WWDG;
     h_watchdog.Init.Prescaler   = WWDG_PRESCALER_32;

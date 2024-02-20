@@ -18,7 +18,6 @@
 #define TS_CAL1_TEMP            TEMPSENSOR_CAL1_TEMP    /*!< TS_CAL1 value */
 #define TS_CAL2_TEMP            TEMPSENSOR_CAL2_TEMP    /*!< TS_CAL2 value */
 
-
 /**
  * @brief   Array where DMA puts the ADC reads.
  */
@@ -51,22 +50,23 @@ STATIC uint32_t AdcData[ N_ADC_CHANNELS_USED ];
  */
 void Analogs_Init( void )
 {
-    TIM_HandleTypeDef TIM2_Handler;
-    TIM_MasterConfigTypeDef TIM2_MasterConfig;
+    TIM_HandleTypeDef TIM2_Handler = {0};
+    TIM_MasterConfigTypeDef TIM2_MasterConfig = {0};
 
-    ADC_HandleTypeDef ADC_Handler;
-    ADC_ChannelConfTypeDef sChanConfig;
+    ADC_HandleTypeDef ADC_Handler = {0};
+    ADC_ChannelConfTypeDef sChanConfig = {0};
 
-    DMA_HandleTypeDef DMA_Handler;
+    DMA_HandleTypeDef DMA_Handler = {0};
 
     HAL_StatusTypeDef Status = HAL_ERROR;
 
     /* Timer 2 configuration */
-    TIM2_Handler.Instance           = TIM2;
-    TIM2_Handler.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-    TIM2_Handler.Init.Prescaler     = TIM2_PRESCALER;
-    TIM2_Handler.Init.Period        = TIM2_PERIOD;
-    TIM2_Handler.Init.CounterMode   = TIM_COUNTERMODE_UP;
+    TIM2_Handler.Instance               = TIM2;
+    TIM2_Handler.Init.ClockDivision     = TIM_CLOCKDIVISION_DIV1;
+    TIM2_Handler.Init.Prescaler         = TIM2_PRESCALER;
+    TIM2_Handler.Init.Period            = TIM2_PERIOD;
+    TIM2_Handler.Init.CounterMode       = TIM_COUNTERMODE_UP;
+    TIM2_Handler.Init.RepetitionCounter = 0;
 
     Status = HAL_TIM_Base_Init( &TIM2_Handler );
     assert_error( Status == HAL_OK, TIM_RET_ERROR );
@@ -76,13 +76,13 @@ void Analogs_Init( void )
 
     Status = HAL_TIMEx_MasterConfigSynchronization( &TIM2_Handler, &TIM2_MasterConfig );
     assert_error( Status == HAL_OK, TIM_RET_ERROR );
-
+    
     /* DMA configuration */
     DMA_Handler.Instance                 = DMA1_Channel1;
     DMA_Handler.Init.Request             = DMA_REQUEST_ADC1;
     DMA_Handler.Init.Direction           = DMA_PERIPH_TO_MEMORY;
     DMA_Handler.Init.MemInc              = DMA_MINC_ENABLE;
-    DMA_Handler.Init.PeriphInc           = DMA_PINC_ENABLE;
+    DMA_Handler.Init.PeriphInc           = DMA_PINC_DISABLE;
     DMA_Handler.Init.MemDataAlignment    = DMA_MDATAALIGN_WORD;
     DMA_Handler.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
     DMA_Handler.Init.Mode                = DMA_CIRCULAR;
@@ -98,15 +98,16 @@ void Analogs_Init( void )
     /* ADC configuration */
     ADC_Handler.Instance                        = ADC1;
     ADC_Handler.Init.ClockPrescaler             = ADC_CLOCK_SYNC_PCLK_DIV2;
+    ADC_Handler.Init.Resolution                 = ADC_RESOLUTION12b;
+    ADC_Handler.Init.ScanConvMode               = ADC_SCAN_ENABLE;
+    ADC_Handler.Init.DataAlign                  = ADC_DATAALIGN_RIGHT;
     ADC_Handler.Init.SamplingTimeCommon1        = ADC_SAMPLETIME_1CYCLE_5;
     ADC_Handler.Init.SamplingTimeCommon2        = ADC_SAMPLETIME_160CYCLES_5;
-    ADC_Handler.Init.ScanConvMode               = ADC_SCAN_ENABLE;
-    ADC_Handler.Init.NbrOfConversion            = N_ADC_CHANNELS_USED;
-    ADC_Handler.Init.DataAlign                  = ADC_DATAALIGN_RIGHT;
-    ADC_Handler.Init.Resolution                 = ADC_RESOLUTION12b;
     ADC_Handler.Init.ExternalTrigConv           = ADC_EXTERNALTRIG_T2_TRGO;
     ADC_Handler.Init.ExternalTrigConvEdge       = ADC_EXTERNALTRIG_EDGE_RISING;
+    ADC_Handler.Init.NbrOfConversion            = N_ADC_CHANNELS_USED;
     ADC_Handler.Init.EOCSelection               = ADC_EOC_SEQ_CONV;
+    ADC_Handler.Init.Overrun                    = ADC_OVR_DATA_OVERWRITTEN;
     ADC_Handler.Init.DMAContinuousRequests      = ENABLE;
     ADC_Handler.Init.Oversampling.Ratio         = ADC_OVERSAMPLING_RATIO;
     ADC_Handler.Init.Oversampling.RightBitShift = ADC_RIGHTBITSHIFT_2;
@@ -136,10 +137,17 @@ void Analogs_Init( void )
     Status = HAL_ADC_ConfigChannel( &ADC_Handler, &sChanConfig );
     assert_error( Status == HAL_OK, ADC_RET_ERROR );
 
+    /* ADC channel configuration internal Vref */
+    sChanConfig.Channel      = ADC_CHANNEL_VREFINT;
+    sChanConfig.Rank         = ADC_REGULAR_RANK_4;
+    sChanConfig.SamplingTime = ADC_SAMPLINGTIME_COMMON_1;
+    Status = HAL_ADC_ConfigChannel( &ADC_Handler, &sChanConfig );
+    assert_error( Status == HAL_OK, ADC_RET_ERROR );
+
     Status = HAL_ADCEx_Calibration_Start( &ADC_Handler );
     assert_error( Status == HAL_OK, ADC_RET_ERROR );
 
-    Status = HAL_ADC_Start_DMA( &ADC_Handler, AdcData, N_ADC_CHANNELS_USED );
+    Status = HAL_ADC_Start_DMA( &ADC_Handler, &AdcData[0], N_ADC_CHANNELS_USED );
     assert_error( Status == HAL_OK, ADC_RET_ERROR );
 
     Status = HAL_TIM_Base_Start( &TIM2_Handler );

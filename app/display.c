@@ -5,6 +5,7 @@
 */
 #include "display.h"
 #include "bsp.h"
+#include "analogs.h"
 
 #define BCD_TO_BIN( x ) ( ( ( (x) >> 4u ) * 10u ) + ( (x) & 0x0Fu ) ) /*!< Macro to conver BCD data to an integer */
 
@@ -147,6 +148,30 @@ void Display_PeriodicTask( void )
 }
 
 /**
+ * @brief   Update the LCD's intensity and contrast values.
+ * 
+ * 
+*/
+void Display_LcdTask( void )
+{
+    static uint8_t current_contrast = 0;
+    uint8_t new_contrast;
+
+    new_contrast = Analogs_GetContrast( );
+
+    if ( new_contrast != current_contrast )
+    {
+        HAL_StatusTypeDef Status = HAL_ERROR; 
+
+        Status = HEL_LCD_Contrast( &LCD_Handler, new_contrast );
+        assert_error( Status == HAL_OK, LCD_RET_ERROR );
+    }
+    
+
+    
+}
+
+/**
  * @brief   Sends the strings with the time and date.
  * 
  * This function updates the display getting the time and date information from the the read message
@@ -182,7 +207,7 @@ STATIC APP_MsgTypeDef Display_Update ( APP_MsgTypeDef *pDisplayMsg )
     Status = HEL_LCD_String( &LCD_Handler, lcd_row_0_date );
     assert_error( Status == HAL_OK, SPI_RET_ERROR );  
 
-    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 4u );
+    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 2u );
     assert_error( Status == HAL_OK, SPI_RET_ERROR );
 
     Status = HEL_LCD_String( &LCD_Handler, lcd_row_1_time );

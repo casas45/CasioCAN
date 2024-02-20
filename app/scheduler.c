@@ -185,7 +185,7 @@ void AppSched_startScheduler( AppSched_Scheduler *scheduler )
     
     /*if a task is added it's mandatory add the error code */
     const App_ErrorsCode TasksError[ TASKS_N ] = 
-    { TASK_SERIAL_ERROR, TASK_CLOCK_ERROR, TASK_HEARTBEAT_ERROR, TASK_DISPLAY_ERROR, TASK_WWDG_ERROR };
+    { TASK_SERIAL_ERROR, TASK_CLOCK_ERROR, TASK_HEARTBEAT_ERROR, TASK_DISPLAY_ERROR, TASK_WWDG_ERROR, TASK_LCD_ERROR };
 
     for (unsigned char i = 0; i < scheduler->tasksCount; i++)   //cicle for init tasks
     {

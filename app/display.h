@@ -28,4 +28,6 @@ void Display_InitTask( void );
 
 void Display_PeriodicTask( void );
 
+void Display_LcdTask( void );
+
 #endif
