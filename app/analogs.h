@@ -3,6 +3,8 @@
  * 
  * @brief   Header file of the analogs driver.
 */
+#include <stdint.h>
+
 #ifndef ANALOGS_H
 #define ANALOGS_H
 
@@ -12,9 +14,11 @@
 #define STATIC
 #endif
 
-#define TEMP_SENSOR_INDEX       0u
-#define CONTRAST_INDEX          1u
-#define INTENSITY_INDEX         2u
+#define N_ADC_CHANNELS_USED     4u              /*!< Number of ADC channels used */
+#define TEMP_INDEX              0u      /*!< Temperature value index in AdcData array */
+#define CONTRAST_INDEX          1u      /*!< Contrast value index in AdcData array */
+#define INTENSITY_INDEX         2u      /*!< Intensity value index in AdcData array */
+#define VREF_INDEX              3u      /*!< Vref value index in AdcData array */
 
 void Analogs_Init( void );
 
