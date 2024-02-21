@@ -42,7 +42,7 @@ extern AppQue_Queue DisplayQueue;
 extern AppSched_Scheduler Scheduler;
 
 /** @brief  RTC Handler external reference */
-extern RTC_HandleTypeDef hrtc;
+extern RTC_HandleTypeDef h_rtc;
 
 /** @brief  WWDG Handler external reference */
 extern WWDG_HandleTypeDef h_watchdog;

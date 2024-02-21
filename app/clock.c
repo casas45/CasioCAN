@@ -20,7 +20,7 @@ AppQue_Queue ClockQueue;
 /**
  * @brief   RTC structure
  */
-RTC_HandleTypeDef hrtc;
+RTC_HandleTypeDef h_rtc;
 
 /**
  * @brief   TIM14 Handle struct.
@@ -104,9 +104,9 @@ void Clock_InitTask( void )
 
     /* Button 1 initialization */
     GPIO_InitStruct.Mode    = GPIO_MODE_IT_RISING_FALLING;
-    GPIO_InitStruct.Speed   = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Speed   = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Pull    = GPIO_NOPULL;
-    GPIO_InitStruct.Pin     = GPIO_PIN_5;
+    GPIO_InitStruct.Pin     = GPIO_PIN_15;
 
     HAL_GPIO_Init( GPIOB, &GPIO_InitStruct );
 
@@ -119,13 +119,13 @@ void Clock_InitTask( void )
     AppQueue_initQueue( &ClockQueue );
 
     /*RTC configuration*/
-    hrtc.Instance          = RTC;
-    hrtc.Init.AsynchPrediv = 127;
-    hrtc.Init.SynchPrediv  = 255;
-    hrtc.Init.HourFormat   = RTC_HOURFORMAT_24;
-    hrtc.Init.OutPut       = RTC_OUTPUT_DISABLE;
+    h_rtc.Instance          = RTC;
+    h_rtc.Init.AsynchPrediv = 127;
+    h_rtc.Init.SynchPrediv  = 255;
+    h_rtc.Init.HourFormat   = RTC_HOURFORMAT_24;
+    h_rtc.Init.OutPut       = RTC_OUTPUT_DISABLE;
 
-    Status = HAL_RTC_Init( &hrtc );
+    Status = HAL_RTC_Init( &h_rtc );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
     /*set Time */
@@ -133,7 +133,7 @@ void Clock_InitTask( void )
     sTime.Minutes = 0x59;
     sTime.Seconds = 0x00;
 
-    Status = HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BCD );
+    Status = HAL_RTC_SetTime( &h_rtc, &sTime, RTC_FORMAT_BCD );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
     /*set Date */
@@ -142,7 +142,7 @@ void Clock_InitTask( void )
     sDate.Month   = RTC_MONTH_JANUARY;
     sDate.Year    = 0x23;
 
-    Status = HAL_RTC_SetDate( &hrtc, &sDate, RTC_FORMAT_BCD );
+    Status = HAL_RTC_SetDate( &h_rtc, &sDate, RTC_FORMAT_BCD );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
     /*enable RTC alarm interrupt*/
@@ -284,7 +284,7 @@ STATIC APP_MsgTypeDef Clock_Set_Time( APP_MsgTypeDef *PtrMsgClk )
     sTime.Minutes = PtrMsgClk->tm.tm_min;
     sTime.Seconds = PtrMsgClk->tm.tm_sec;
 
-    Status = HAL_RTC_SetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
+    Status = HAL_RTC_SetTime( &h_rtc, &sTime, RTC_FORMAT_BIN );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
     Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
@@ -331,7 +331,7 @@ STATIC APP_MsgTypeDef Clock_Set_Date( APP_MsgTypeDef *PtrMsgClk )
     sDate.Month   = PtrMsgClk->tm.tm_mon;
     sDate.Year    = (uint8_t)( PtrMsgClk->tm.tm_year % CENTENARY ); /*Get last two digits of the year*/
 
-    Status = HAL_RTC_SetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
+    Status = HAL_RTC_SetDate( &h_rtc, &sDate, RTC_FORMAT_BIN );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
     Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
@@ -389,7 +389,7 @@ STATIC APP_MsgTypeDef Clock_Set_Alarm( APP_MsgTypeDef *PtrMsgClk )
     sAlarm.AlarmTime.Hours   = PtrMsgClk->tm.tm_hour;
     sAlarm.AlarmTime.Minutes = PtrMsgClk->tm.tm_min;
 
-    Status = HAL_RTC_SetAlarm_IT( &hrtc, &sAlarm, RTC_FORMAT_BIN );
+    Status = HAL_RTC_SetAlarm_IT( &h_rtc, &sAlarm, RTC_FORMAT_BIN );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
     Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextEventDisplay );
@@ -421,10 +421,10 @@ STATIC APP_MsgTypeDef Clock_Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
     APP_MsgTypeDef updateMsg = {0};
     updateMsg.msg = DISPLAY_MSG_UPDATE;
 
-    Status = HAL_RTC_GetTime( &hrtc, &sTime, RTC_FORMAT_BIN );
+    Status = HAL_RTC_GetTime( &h_rtc, &sTime, RTC_FORMAT_BIN );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
-    Status = HAL_RTC_GetDate( &hrtc, &sDate, RTC_FORMAT_BIN );
+    Status = HAL_RTC_GetDate( &h_rtc, &sDate, RTC_FORMAT_BIN );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
     updateMsg.tm.tm_hour = sTime.Hours;
@@ -553,9 +553,11 @@ STATIC APP_MsgTypeDef Clock_ButtonPressed( APP_MsgTypeDef *PtrMsgClk )
     Status = AppSched_stopTimer( &Scheduler, UpdateTimerID );
     assert_error( Status == TRUE, SCHE_RET_ERROR );
 
+    HIL_QUEUE_flushQueueISR( &DisplayQueue );
+
     if( AlarmActivated_flg == TRUE )
     {
-        nextEvent.msg = CLOCK_MSG_DEACTIVATE_ALARM;                         /* Write deactivate alarm event */
+        nextEvent.msg = CLOCK_MSG_DEACTIVATE_ALARM;                       
 
         Status = HIL_QUEUE_writeDataISR( &ClockQueue, &nextEvent );
         assert_error( Status == TRUE, QUEUE_RET_ERROR );
@@ -569,6 +571,11 @@ STATIC APP_MsgTypeDef Clock_ButtonPressed( APP_MsgTypeDef *PtrMsgClk )
     }
     else        /* Alarm no config */
     {
+        nextEvent.msg = DISPLAY_MSG_CLEAR_SECOND_LINE;
+
+        Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextEvent ); 
+        assert_error( Status == TRUE, QUEUE_RET_ERROR );
+
         nextEvent.msg = DISPLAY_MSG_ALARM_NO_CONF;
 
         Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextEvent ); 
@@ -634,7 +641,7 @@ STATIC APP_MsgTypeDef Clock_GetAlarm( APP_MsgTypeDef *PtrMsgClk )
     APP_MsgTypeDef alarmMsg = {0};
     RTC_AlarmTypeDef sAlarm = {0};
 
-    Status = HAL_RTC_GetAlarm( &hrtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN );
+    Status = HAL_RTC_GetAlarm( &h_rtc, &sAlarm, RTC_ALARM_A, RTC_FORMAT_BIN );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
 
     alarmMsg.msg = DISPLAY_MSG_CLEAR_SECOND_LINE;

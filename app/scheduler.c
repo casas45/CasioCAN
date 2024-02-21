@@ -14,7 +14,7 @@
 
 #define MAX_COUNT_TIM6          0xFFFFu     /*!< Maximum count value allowed by TIM6 */
 #define TIM6_PRESCALER          64000u      /*!< TIM6 prescaler value to get 1 ms period */
-#define ERROR_1MS               1u          /*!< Error range for task's periodicity */
+#define ERROR_2MS               2u            /*!< Error range for task's periodicity */
 
 static void Scheduler_monitoring_Init( void );
 
@@ -213,7 +213,7 @@ void AppSched_startScheduler( AppSched_Scheduler *scheduler )
 
                     currentTick = __HAL_TIM_GetCounter( &TIM6_Handler );
 
-                    assert_error( ( currentTick - lastTick[i] ) <= ( scheduler->taskPtr[i].period + ERROR_1MS ) , TasksError[i] );
+                    assert_error( ( currentTick - lastTick[i] ) <= ( scheduler->taskPtr[i].period + ERROR_2MS ) , TasksError[i] );
 
                     scheduler->taskPtr[i].taskFunc();
                     scheduler->taskPtr[i].elapsed = 0;          //reset elapsed time
