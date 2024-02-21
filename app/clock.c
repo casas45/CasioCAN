@@ -569,11 +569,8 @@ STATIC APP_MsgTypeDef Clock_ButtonPressed( APP_MsgTypeDef *PtrMsgClk )
     }
     else        /* Alarm no config */
     {
-        nextEvent.msg = DISPLAY_MSG_CLEAR_SECOND_LINE;
-        Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextEvent );  
-        assert_error( Status == TRUE, QUEUE_RET_ERROR );
-
         nextEvent.msg = DISPLAY_MSG_ALARM_NO_CONF;
+
         Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextEvent ); 
         assert_error( Status == TRUE, QUEUE_RET_ERROR );
     }
@@ -595,30 +592,27 @@ STATIC APP_MsgTypeDef Clock_ButtonReleased( APP_MsgTypeDef *PtrMsgClk )
     APP_MsgTypeDef updateMsg = {0};
     APP_MsgTypeDef nextDisplayEvent = { .msg = DISPLAY_MSG_NONE };
 
-    /* if the button is still pressed dont do anything, this is used to avoid false button releases */
-    if( HAL_GPIO_ReadPin( GPIOB, GPIO_PIN_5 ) == GPIO_PIN_SET ) 
-    {
-        uint8_t Status = FALSE;
+    uint8_t Status = FALSE;
 
-        nextDisplayEvent.msg = DISPLAY_MSG_CLEAR_SECOND_LINE;
+    nextDisplayEvent.msg = DISPLAY_MSG_CLEAR_SECOND_LINE;
+    Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextDisplayEvent );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
+
+    updateMsg.msg = CLOCK_MSG_DISPLAY;
+    Status = HIL_QUEUE_writeDataISR( &ClockQueue, &updateMsg );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
+
+    Status = AppSched_startTimer( &Scheduler, UpdateTimerID ); 
+    assert_error( Status == TRUE, SCHE_RET_ERROR );
+
+    if( AlarmSet_flg == TRUE )
+    {
+        nextDisplayEvent.msg = DISPLAY_MSG_ALARM_SET;       /* Print the letter A again */
+
         Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextDisplayEvent );
         assert_error( Status == TRUE, QUEUE_RET_ERROR );
-
-        updateMsg.msg = CLOCK_MSG_DISPLAY;
-        Status = HIL_QUEUE_writeDataISR( &ClockQueue, &updateMsg );
-        assert_error( Status == TRUE, QUEUE_RET_ERROR );
-
-        Status = AppSched_startTimer( &Scheduler, UpdateTimerID ); 
-        assert_error( Status == TRUE, SCHE_RET_ERROR );
-
-        if( AlarmSet_flg == TRUE )
-        {
-            nextDisplayEvent.msg = DISPLAY_MSG_ALARM_SET;       /* Print the letter A again */
-            Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextDisplayEvent );
-            assert_error( Status == TRUE, QUEUE_RET_ERROR );
-        }
     }
-    
+
     return nextDisplayEvent;
 }
 
