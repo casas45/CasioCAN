@@ -42,7 +42,7 @@ extern AppQue_Queue DisplayQueue;
 extern AppSched_Scheduler Scheduler;
 
 /** @brief  RTC Handler external reference */
-extern RTC_HandleTypeDef hrtc;
+extern RTC_HandleTypeDef h_rtc;
 
 /** @brief  WWDG Handler external reference */
 extern WWDG_HandleTypeDef h_watchdog;
@@ -127,6 +127,9 @@ typedef enum
     CLOCK_MSG_DISPLAY,          /*!< Msg to update display */
     CLOCK_MSG_ALARM_ACTIVATED,  /*!< Msg to activate the alarm */
     CLOCK_MSG_DEACTIVATE_ALARM, /*!< Msg to deactivate the alarm */
+    CLOCK_MSG_BTN_PRESSED,      
+    CLOCK_MSG_BTN_RELEASED,
+    CLOCK_MSG_GET_ALARM,
     N_CLK_EVENTS,               /*!< Number of events in clock event machine*/
     CLK_MSG_NONE
 } ClkMessages;
@@ -143,6 +146,9 @@ typedef enum
     DISPLAY_MSG_ALARM_SET,          /*!< Msg to print the A in the display */
     DISPLAY_MSG_ALARM_ACTIVE,       /*!< Msg to display the word "ALARM!!!" */
     DISPLAY_MSG_BACKLIGHT,          /*!< Msg to change the lcd backlight state */
+    DISPLAY_MSG_ALARM_NO_CONF,      /*!< Msg to show the text "ALARM NO CONFIG "*/
+    DISPLAY_MSG_ALARM_VALUES,           /*!< Msg to show the alarm values */
+    DISPLAY_MSG_CLEAR_SECOND_LINE,      /*!< Msg to clear the second line of the LCD */
     N_DISPLAY_EVENTS,               /*!< Number of events in Display event machine*/
     DISPLAY_MSG_NONE                /*!< Element to indicate that any event is next*/
 } DisplayMessages;

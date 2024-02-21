@@ -14,7 +14,7 @@
 #define TICK_VAL                5u          /*!< Tick value to scheduler */
 #define ONE_SECOND              1000u       /*!< Value of 1000 ms */
 #define ONE_MINUTE              60000u      /*!< Value of 60000 ms */
-#define WINDOW_VALUE_WWDG       100u        /*!< Watchdog window value */
+#define WINDOW_VALUE_WWDG       127u        /*!< Watchdog window value */
 #define COUNTER_VALUE_WWDG      127u        /*!< Watchdog counter value */
 #define PERIOD_DISPLAY_TASK     100u        /*!< Display task periodicity */
 #define LEDS                    0xFFu       /*!< define to initialize the 8 LEDs */
@@ -205,7 +205,7 @@ void safe_state( const char *file, uint32_t line, uint8_t error )
 
     HEL_LCD_Backlight( &LCD_Handler, LCD_OFF );             
 
-    HAL_RTC_DeInit( &hrtc );                               
+    HAL_RTC_DeInit( &h_rtc );                               
 
     HAL_FDCAN_DeInit( &CANHandler );                       
 
@@ -215,7 +215,6 @@ void safe_state( const char *file, uint32_t line, uint8_t error )
 
     while ( SAFE_STATE == TRUE )
     { 
-        HAL_Delay( PERIOD_WATCHDOG_TASK );      /* delay to refreshed the WWDG in the correct period */
         HAL_WWDG_Refresh( &h_watchdog );
     }
     

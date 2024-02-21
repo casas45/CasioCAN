@@ -37,9 +37,14 @@ uint8_t TimerAlarmActiveOneSecond_ID;
 uint8_t TimerDeactivateAlarm_ID;
 
 /**
- * @brief   Alarm Activated Flag reference.
+ * @brief   Alarm activated flag reference.
 */
 extern uint8_t AlarmActivated_flg;
+
+/**
+ * @brief   Alarm set flag reference.
+*/
+extern uint8_t AlarmSet_flg;
 
 /**
  * @brief   reference to the DisplayQueue.
@@ -93,10 +98,28 @@ APP_MsgTypeDef Clock_Send_Display_Msg( APP_MsgTypeDef * );
 APP_MsgTypeDef Clock_Alarm_Activated( APP_MsgTypeDef * );
 
 /** 
- * @brief Reference for the private function Clock_Deactivate_Alarm. 
+ * @brief   Reference for the private function Clock_Deactivate_Alarm. 
  * @return  Message with the next event.
 */
 APP_MsgTypeDef Clock_Deactivate_Alarm( APP_MsgTypeDef * );
+
+/** 
+ * @brief   Reference for the private function Clock_ButtonPressed. 
+ * @return  Message with the next event.
+*/
+APP_MsgTypeDef Clock_ButtonPressed( APP_MsgTypeDef * );
+
+/** 
+ * @brief   Reference for the private function Clock_ButtonReleased. 
+ * @return  Message with the next event.
+*/
+APP_MsgTypeDef Clock_ButtonReleased( APP_MsgTypeDef * );
+
+/** 
+ * @brief   Reference for the private function Clock_GetAlarm. 
+ * @return  Message with the next event.
+*/
+APP_MsgTypeDef Clock_GetAlarm( APP_MsgTypeDef * );
 
 /**
  * @brief   Function to test the Clock_InitTask function.
@@ -455,6 +478,177 @@ void test__Clock_Deactivate_Alarm( void )
 }
 
 /**
+ * @brief   test Clock_ButtonPressed event AlarmActivated_flg TRUE.
+ * 
+ * When this event is called with the AlarmActivated_flg set to TRUE, the next clock event
+ * shall be CLOCK_MSG_DEACTIVATE_ALARM, and this is tested with the TEST_ASSERT_EQUAL assertion.
+*/
+void test__Clock_ButtonPressed__AlarmActivated_flg_TRUE_return_msg_CLOCK_MSG_DEACTIVATE_ALARM( void )
+{
+    APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
+
+    AlarmActivated_flg = TRUE;
+    
+    AppSched_stopTimer_IgnoreAndReturn( TRUE );
+    HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+
+    nextEvent = Clock_ButtonPressed( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, CLOCK_MSG_DEACTIVATE_ALARM );
+}
+
+/**
+ * @brief   test Clock_ButtonPressed event AlarmSet_flg TRUE.
+ * 
+ * When this event is called with the AlarmActivated_flg set to FALSE and the AlarmSet_flg set to
+ * TRUE, the next clock event shall be CLOCK_MSG_GET_ALARM, and this is tested with the 
+ * TEST_ASSERT_EQUAL assertion.
+*/
+void test__Clock_ButtonPressed__AlarmSet_flg_TRUE_return_msg_CLOCK_MSG_GET_ALARM( void )
+{
+    APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
+
+    AlarmActivated_flg = FALSE;
+    AlarmSet_flg = TRUE;
+    
+    AppSched_stopTimer_IgnoreAndReturn( TRUE );
+    HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+
+    nextEvent = Clock_ButtonPressed( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, CLOCK_MSG_GET_ALARM );
+}
+
+/**
+ * @brief   test Clock_ButtonPressed event AlarmSet_flg FALSE and AlarmActivated_flg FALSE.
+ * 
+ * When this event is called with the AlarmActivated_flg set to FALSE and also the AlarmSet_flg 
+ * set to FALSE, the next clock event shall be DISPLAY_MSG_ALARM_NO_CONF, and this is tested with 
+ * the TEST_ASSERT_EQUAL assertion.
+*/
+void test__Clock_ButtonPressed__AlarmSet_flg_FALSE_and_AlarmActivated_flg_FALSE_return_msg_DISPLAY_MSG_ALARM_NO_CONF( void )
+{
+    APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
+
+    AlarmActivated_flg = FALSE;
+    AlarmSet_flg = FALSE;
+    
+    AppSched_stopTimer_IgnoreAndReturn( TRUE );
+    HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+
+    nextEvent = Clock_ButtonPressed( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_ALARM_NO_CONF );
+}
+
+/**
+ * @brief   test Clock_ButtonReleased event, case when the button is still pressed.
+ * 
+ * In this event was added if sentence to evaluate whether the button was actually released or not,
+ * the aim of this test is to check if the correct message is returned mocking the HAL_GPIO_ReadPin
+ * function to get a GPIO_PIN_RESET state, the expected result is a DISPLAY_MSG_NONE message.
+*/
+void test__Clock_ButtonReleased__button_still_pressed_return_DISPLAY_MSG_NONE_message( void )
+{
+    APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
+
+    HAL_GPIO_ReadPin_ExpectAnyArgsAndReturn( GPIO_PIN_RESET );
+
+    nextEvent = Clock_ButtonReleased( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_NONE );
+}
+
+/**
+ * @brief   test Clock_ButtonReleased event, button is not pressed and the AlarmSet_flg is FALSE.
+ * 
+ * When the button a valid button released event has been added (the button is not pressed) and the
+ * AlarmSet_flg is set to FALSE, the next display event shall be DISPLAY_MSG_CLEAR_SECOND_LINE.
+*/
+void test__Clock_ButtonReleased__correct_release_AlarmSet_flg_FALSE_return_DISPLAY_MSG_CLEAR_SECOND_LINE_message(void)
+{
+    APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
+
+    HAL_GPIO_ReadPin_ExpectAnyArgsAndReturn( GPIO_PIN_SET );
+    HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+    AppSched_startTimer_IgnoreAndReturn( TRUE );
+
+    nextEvent = Clock_ButtonReleased( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_CLEAR_SECOND_LINE );
+}
+
+/**
+ * @brief   test Clock_ButtonReleased event, button is not pressed and the AlarmSet_flg is TRUE.
+ * 
+ * When the button a valid button released event has been added (the button is not pressed) and the
+ * AlarmSet_flg is set to TRUE, the next display event shall be DISPLAY_MSG_ALARM_SET.
+*/
+void test__Clock_ButtonReleased__correct_release_AlarmSet_flg_TRUE_return_DISPLAY_MSG_ALARM_SET_message(void)
+{
+    APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
+
+    AlarmSet_flg = TRUE;
+
+    HAL_GPIO_ReadPin_ExpectAnyArgsAndReturn( GPIO_PIN_SET );
+    HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+    AppSched_startTimer_IgnoreAndReturn( TRUE );
+
+    nextEvent = Clock_ButtonReleased( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_ALARM_SET );
+}
+
+/**
+ * @brief   test Clock_GetAlarm event, check the next display event.
+ * 
+ * In this event, the only possible next display event is DISPLAY_MSG_ALARM_VALUES, and this 
+ * is checked using the TEST_ASSERT_EQUAL assertion.
+*/
+void test__Clock_GetAlarm__check_the_returned_message_expected_result_is_DISPLAY_MSG_ALARM_VALUES( void )
+{
+    APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef nextEvent = {0};
+
+    HAL_RTC_GetAlarm_IgnoreAndReturn( HAL_OK );
+    HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+
+    nextEvent = Clock_GetAlarm( &msgReceived );
+
+    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_ALARM_VALUES );
+}
+
+/**
+ * @brief   test Clock_GetAlarm event, check the alarm values.
+ * 
+ * The returned message by this function contain the alarm values, the aim of this test 
+*/
+void test__Clock_GetAlarm__check_the_returned_alarm_values( void )
+{
+    APP_MsgTypeDef msgReceived = {0};
+    APP_MsgTypeDef alarmMsg = {0};
+    RTC_AlarmTypeDef sAlarm_expected = {0};
+
+    sAlarm_expected.AlarmTime.Hours = 8u;
+    sAlarm_expected.AlarmTime.Minutes = 0u;
+
+    HAL_RTC_GetAlarm_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_RTC_GetAlarm_ReturnMemThruPtr_sAlarm( &sAlarm_expected, sizeof(RTC_AlarmTypeDef) );
+    HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+
+    alarmMsg = Clock_GetAlarm( &msgReceived );
+
+    TEST_ASSERT_EQUAL( alarmMsg.tm.tm_hour, 8u );
+    TEST_ASSERT_EQUAL( alarmMsg.tm.tm_min, 0u );
+}
+
+/**
  * @brief   test HAL_RTC_AlarmAEventCallback,
 */
 void test__HAL_RTC_AlarmAEventCallback( void )
@@ -463,4 +657,24 @@ void test__HAL_RTC_AlarmAEventCallback( void )
     HAL_RTC_DeactivateAlarm_IgnoreAndReturn( HAL_OK );
 
     HAL_RTC_AlarmAEventCallback( &hrtc );
+}
+
+/**
+ * @brief   test HAL_GPIO_EXTI_Falling_Callback.
+*/
+void test__HAL_GPIO_EXTI_Falling_Callback( void )
+{
+    HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+
+    HAL_GPIO_EXTI_Falling_Callback( GPIO_PIN_5 );
+}
+
+/**
+ * @brief   test HAL_GPIO_EXTI_Rising_Callback.
+*/
+void test__HAL_GPIO_EXTI_Rising_Callback( void )
+{
+    HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+
+    HAL_GPIO_EXTI_Rising_Callback( GPIO_PIN_5 );
 }

@@ -26,17 +26,25 @@ LCD_HandleTypeDef LCD_Handler;
 /** @brief SPI Handler */
 SPI_HandleTypeDef SPI_Handler;
 
-STATIC APP_MsgTypeDef UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef Display_Update( APP_MsgTypeDef *pDisplayMsg );
 
-STATIC APP_MsgTypeDef DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef Display_AlarmSet( APP_MsgTypeDef *pDisplayMsg );
 
-STATIC APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef Display_AlarmActive( APP_MsgTypeDef *pDisplayMsg );
 
-STATIC APP_MsgTypeDef DisplayChangeBacklightState( APP_MsgTypeDef *pDisplayMsg );
+STATIC APP_MsgTypeDef Display_ChangeBacklightState( APP_MsgTypeDef *pDisplayMsg );
+
+STATIC APP_MsgTypeDef Display_AlarmValues( APP_MsgTypeDef *pDisplayMsg );
+
+STATIC APP_MsgTypeDef Display_AlarmNoConfig( APP_MsgTypeDef *pDisplayMsg );
+
+STATIC APP_MsgTypeDef Display_ClearSecondLine( APP_MsgTypeDef *pDisplayMsg );
 
 STATIC void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds );
 
 STATIC void DateString( char *string, uint8_t month, uint8_t day, uint16_t year, uint8_t weekday );
+
+STATIC void AlarmString( char *string, unsigned char hours, unsigned char minutes );
 
 /**
  * @brief   Initialize all required to work with the LCD.
@@ -112,10 +120,13 @@ void Display_PeriodicTask( void )
 {
     APP_MsgTypeDef (*DisplayEventMachine[ N_DISPLAY_EVENTS ])( APP_MsgTypeDef *DisplayMsg ) =
     {
-        UpdateDisplay,
-        DisplayAlarmSet,
-        DisplayAlarmActive,
-        DisplayChangeBacklightState
+        Display_Update,
+        Display_AlarmSet,
+        Display_AlarmActive,
+        Display_ChangeBacklightState,
+        Display_AlarmNoConfig,
+        Display_AlarmValues,
+        Display_ClearSecondLine
     };
 
     APP_MsgTypeDef readMsg = {0};
@@ -150,7 +161,7 @@ void Display_PeriodicTask( void )
  * the value TWO_THOUSANDS to obtain a four-digit year. Please note that this assumes we are in the
  * years 2000.
 */
-STATIC APP_MsgTypeDef UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
+STATIC APP_MsgTypeDef Display_Update ( APP_MsgTypeDef *pDisplayMsg )
 {
     APP_MsgTypeDef nextEvent = {0};
     nextEvent.msg = DISPLAY_MSG_NONE;
@@ -189,7 +200,7 @@ STATIC APP_MsgTypeDef UpdateDisplay ( APP_MsgTypeDef *pDisplayMsg )
  * 
  * @return  the next event, if there is one, otherwise DISPLAY_MSG_NONE.
 */
-STATIC APP_MsgTypeDef DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg )
+STATIC APP_MsgTypeDef Display_AlarmSet( APP_MsgTypeDef *pDisplayMsg )
 {
     (void) pDisplayMsg;
 
@@ -218,7 +229,7 @@ STATIC APP_MsgTypeDef DisplayAlarmSet( APP_MsgTypeDef *pDisplayMsg )
  * 
  * @return  the next event, if there is one, otherwise DISPLAY_MSG_NONE.
 */
-STATIC APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg )
+STATIC APP_MsgTypeDef Display_AlarmActive( APP_MsgTypeDef *pDisplayMsg )
 {
     (void) pDisplayMsg;
 
@@ -245,13 +256,94 @@ STATIC APP_MsgTypeDef DisplayAlarmActive( APP_MsgTypeDef *pDisplayMsg )
  * 
  * @return  the next event, if there is one, otherwise DISPLAY_MSG_NONE.
 */
-STATIC APP_MsgTypeDef DisplayChangeBacklightState( APP_MsgTypeDef *pDisplayMsg )
+STATIC APP_MsgTypeDef Display_ChangeBacklightState( APP_MsgTypeDef *pDisplayMsg )
 {
     (void) pDisplayMsg;
 
     APP_MsgTypeDef nextEvent = { .msg = DISPLAY_MSG_NONE };
 
     HEL_LCD_Backlight( &LCD_Handler, pDisplayMsg->displayBkl );
+
+    return nextEvent;
+}
+
+/**
+ * @brief   Display alarm values event.
+ * 
+ * @param   pDisplayMsg Pointer to the display message read.
+ * 
+ * @return  The next display event.
+*/
+STATIC APP_MsgTypeDef Display_AlarmValues ( APP_MsgTypeDef *pDisplayMsg )
+{
+    APP_MsgTypeDef nextEvent = {.msg = DISPLAY_MSG_NONE};
+
+    char lcd_row_1_alarm[ LCD_CHARACTERS ];
+
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
+    AlarmString( lcd_row_1_alarm, pDisplayMsg->tm.tm_hour, pDisplayMsg->tm.tm_min );
+
+    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 3u ); /*Set cursor on row 1 and col 3*/
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    Status = HEL_LCD_String( &LCD_Handler, lcd_row_1_alarm );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    return nextEvent;
+}
+
+/**
+ * @brief   Display alarm values event.
+ * 
+ * This function print the message "ALARM NO CONFIG" on the second line of the LCD.
+ * 
+ * @param   pDisplayMsg Pointer to the display message read.
+ * 
+ * @return  The next display event.
+*/
+STATIC APP_MsgTypeDef Display_AlarmNoConfig ( APP_MsgTypeDef *pDisplayMsg )
+{
+    (void) pDisplayMsg;
+
+    APP_MsgTypeDef nextEvent = {.msg = DISPLAY_MSG_NONE};
+
+    const char *stringAlarm = "ALARM NO CONFIG";
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
+    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 0u );   /*Set cursor on the second line and first column*/
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    Status = HEL_LCD_String( &LCD_Handler, stringAlarm );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    return nextEvent;
+}
+
+/**
+ * @brief   Display alarm values event.
+ * 
+ * This function fill the second line of the LCD with blank spaces.
+ * 
+ * @param   pDisplayMsg Pointer to the display message read.
+ * 
+ * @return  The next display event.
+*/
+STATIC APP_MsgTypeDef Display_ClearSecondLine( APP_MsgTypeDef *pDisplayMsg )
+{
+    (void) pDisplayMsg;
+
+    APP_MsgTypeDef nextEvent = {.msg = DISPLAY_MSG_NONE};
+
+    const char *blankString = "                ";    /* string with 16 blank spaces */
+    
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
+    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 0u ); /*Set cursor in the second line */
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    Status = HEL_LCD_String( &LCD_Handler, blankString );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
 
     return nextEvent;
 }
@@ -341,4 +433,32 @@ STATIC void DateString( char *string, uint8_t month, uint8_t day, uint16_t year,
 
     /* Add null character */
     string[14] = '\0';
+}
+
+/**
+ * @brief   Set the alarm paramaters into a string with a specific format.
+ * 
+ * Put the hour and minutes of the alarm into the string with the format: "ALARM=15:30".
+ * 
+ * @param[out]  string  Pointer to the character array where the formatted alarm string will be stored.
+ * @param[in]   hours   The hours component of the alarm.
+ * @param[in]   minutes The minutes component of the alarm.
+ * 
+ * @note The output string must have sufficient space (at least 12 characters) to accommodate the 
+ * formatted alarm string.
+*/
+STATIC void AlarmString( char *string, unsigned char hours, unsigned char minutes )
+{
+    string[0]  = 'A';
+    string[1]  = 'L';
+    string[2]  = 'A';
+    string[3]  = 'R';
+    string[4]  = 'M';
+    string[5]  = '=';
+    string[6]  = GET_TENS(hours) + UPSET_ASCII_NUM;
+    string[7]  = GET_UNITS(hours) + UPSET_ASCII_NUM;
+    string[8]  = ':';
+    string[9]  = GET_TENS(minutes) + UPSET_ASCII_NUM;
+    string[10]  = GET_UNITS(minutes) + UPSET_ASCII_NUM;
+    string[11] = '\0';
 }
