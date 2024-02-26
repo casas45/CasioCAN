@@ -14,11 +14,21 @@
 #define STATIC
 #endif
 
-#define N_ADC_CHANNELS_USED     4u              /*!< Number of ADC channels used */
-#define TEMP_INDEX              0u      /*!< Temperature value index in AdcData array */
-#define CONTRAST_INDEX          1u      /*!< Contrast value index in AdcData array */
-#define INTENSITY_INDEX         2u      /*!< Intensity value index in AdcData array */
-#define VREF_INDEX              3u      /*!< Vref value index in AdcData array */
+/**
+ * @brief   enum to organize the ADC channels
+*/
+typedef enum
+{
+
+    TEMP_INDEX = 0u,        /*!< Temperature value index in AdcData array */
+    INTENSITY_INDEX,        /*!< Intensity value index in AdcData array */
+    CONTRAST_INDEX,         /*!< Contrast value index in AdcData array */
+    POT0_ADC6_INDEX,             /*!< Pot0 second lecture value index in AdcData array */
+    POT1_ADC7_INDEX,             /*!< Pot1 second lecture value index in AdcData array */
+    VREF_INDEX,             /*!< Vref value index in AdcData array */
+    N_ADC_CHANNELS_USED     /*!< Number of ADC channels used */
+
+} AdcChannels;
 
 void Analogs_Init( void );
 

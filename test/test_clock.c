@@ -163,7 +163,6 @@ void test__ClockUpdate_Callback( void )
 void test__TimerAlarmOneSecond_Callback__buzzer_flg_FALSE( void )
 {
     HAL_TIM_PWM_Start_ExpectAnyArgsAndReturn( HAL_OK );
-    HEL_LCD_Backlight_Ignore( );
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
     AppSched_startTimer_ExpectAnyArgsAndReturn( TRUE );
 
@@ -656,7 +655,7 @@ void test__HAL_RTC_AlarmAEventCallback( void )
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
     HAL_RTC_DeactivateAlarm_IgnoreAndReturn( HAL_OK );
 
-    HAL_RTC_AlarmAEventCallback( &hrtc );
+    HAL_RTC_AlarmAEventCallback( &h_rtc );
 }
 
 /**

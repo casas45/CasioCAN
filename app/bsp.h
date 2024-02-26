@@ -25,7 +25,7 @@ extern void safe_state( const char *file, uint32_t line, uint8_t error );
 #define PERIOD_HEARTBEAT_TASK   300u        /*!< Heartbeat task periodicity */
 #define PERIOD_WATCHDOG_TASK    150u        /*!< Watchdog task periodicity */
 #define PERIOD_DISPLAY_TASK     100u        /*!< Display task periodicity */
-#define PERIOD_LCD_TASK         55u         /*!< Task to control LCD intensity and contrast periodicity */
+#define PERIOD_LCD_TASK         50u         /*!< Task to control LCD intensity and contrast periodicity */
 #define TASKS_N                 6u          /*!< Number of tasks registered in the scheduler */
 #define TIMERS_N                3u          /*!< Number of timers registered in the scheduler */
 
@@ -66,6 +66,9 @@ extern uint8_t TimerAlarmActiveOneSecond_ID;
 
 /** @brief  Variable to save the TimerAlarmActiveOneMinute_ID ID */
 extern uint8_t TimerDeactivateAlarm_ID;
+
+/** @brief TIM3 Handler external reference */
+extern TIM_HandleTypeDef TIM3_Handler;
 
 
 /**
@@ -149,8 +152,9 @@ typedef enum
     DISPLAY_MSG_ALARM_ACTIVE,       /*!< Msg to display the word "ALARM!!!" */
     DISPLAY_MSG_BACKLIGHT,          /*!< Msg to change the lcd backlight state */
     DISPLAY_MSG_ALARM_NO_CONF,      /*!< Msg to show the text "ALARM NO CONFIG "*/
-    DISPLAY_MSG_ALARM_VALUES,           /*!< Msg to show the alarm values */
-    DISPLAY_MSG_CLEAR_SECOND_LINE,      /*!< Msg to clear the second line of the LCD */
+    DISPLAY_MSG_ALARM_VALUES,       /*!< Msg to show the alarm values */
+    DISPLAY_MSG_CLEAR_SECOND_LINE,  /*!< Msg to clear the second line of the LCD */
+    DISPLAY_MSG_TEMPERATURE,        /*!< Msg to display the internal temperature */
     N_DISPLAY_EVENTS,               /*!< Number of events in Display event machine*/
     DISPLAY_MSG_NONE                /*!< Element to indicate that any event is next*/
 } DisplayMessages;
@@ -187,7 +191,11 @@ typedef enum _App_ErrorsCode
     LCD_RET_ERROR,
     TIM_RET_ERROR,
     DMA_RET_ERROR,
-    ADC_RET_ERROR
+    ADC_RET_ERROR,
+    POT0_H_READING_ERROR,
+    POT0_L_READING_ERROR,
+    POT1_H_READING_ERROR,
+    POT1_L_READING_ERROR
 
 } App_ErrorsCode;
 

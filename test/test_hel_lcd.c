@@ -10,6 +10,7 @@
 #include "mock_stm32g0xx_hal.h"
 #include "mock_stm32g0xx_hal_spi.h"
 #include "mock_stm32g0xx_hal_gpio.h"
+#include "mock_stm32g0xx_hal_tim.h"
 
 /**
  * @brief   struct to handle the LCD.
@@ -188,40 +189,72 @@ void test__HEL_LCD_SetCursor__exceed_limits_goto_col_0_row_1_return_HAL_OK( void
 /**
  * @brief   Test case for HEL_LCD_Backlight setting ON.
  * 
- * This unit test mocks the HAL_GPIO_WritePin function, and it only checks that the case of
+ * This unit test mocks the HAL_TIM_PWM_Start function, and it only checks that the case of
  * LCD_ON is taken.
 */
 void test__HEL_LCD_Backlight__set_ON( void )
 {
-    HAL_GPIO_WritePin_Ignore( );
+    uint8_t retVal = HAL_ERROR;
 
-    HEL_LCD_Backlight( &LCD_Handler, LCD_ON );
+    HAL_TIM_PWM_Start_IgnoreAndReturn( HAL_OK );
+
+    retVal = HEL_LCD_Backlight( &LCD_Handler, LCD_ON );
+
+    TEST_ASSERT_EQUAL( HAL_OK, retVal );
 }
 
 /**
  * @brief   Test case for HEL_LCD_Backlight setting OFF.
  * 
- * This unit test mocks the HAL_GPIO_WritePin function, and it only checks that the case of
+ * This unit test mocks the HAL_TIM_PWM_Stop function, and it only checks that the case of
  * LCD_OFF is taken.
 */
 void test__HEL_LCD_Backlight__set_OFF( void )
 {
-    HAL_GPIO_WritePin_Ignore( );
+    uint8_t retVal = HAL_ERROR;
 
-    HEL_LCD_Backlight( &LCD_Handler, LCD_OFF );
+    HAL_TIM_PWM_Stop_IgnoreAndReturn( HAL_OK );
+
+    retVal = HEL_LCD_Backlight( &LCD_Handler, LCD_OFF );
+
+    TEST_ASSERT_EQUAL( HAL_OK, retVal );
 }
 
 /**
  * @brief   Test case for HEL_LCD_Backlight toggle it.
  * 
- * This unit test mocks the HAL_GPIO_WritePin function, and it only checks that the case of
- * LCD_TOGGLE is taken.
+ * This unit test mocks the HAL_TIM_PWM_Start function, and it only checks that the case of
+ * LCD_TOGGLE is taken when the current state is LCD_OFF.
 */
-void test__HEL_LCD_Backlight__Toggle( void )
+void test__HEL_LCD_Backlight__Toggle__current_state_LCD_OFF( void )
 {
-    HAL_GPIO_TogglePin_Ignore( );
+    uint8_t retVal = HAL_ERROR;
 
-    HEL_LCD_Backlight( &LCD_Handler, LCD_TOGGLE );
+    HAL_TIM_PWM_Start_IgnoreAndReturn( HAL_OK );
+    HAL_TIM_PWM_Stop_IgnoreAndReturn( HAL_OK );
+
+    retVal = HEL_LCD_Backlight( &LCD_Handler, LCD_TOGGLE );
+
+    TEST_ASSERT_EQUAL( HAL_OK, retVal );
+}
+
+/**
+ * @brief   Test case for HEL_LCD_Backlight toggle it.
+ * 
+ * This unit test mocks the HAL_TIM_PWM_Start function, and it only checks that the case of
+ * LCD_TOGGLE is taken when the current state is LCD_ON.
+*/
+void test__HEL_LCD_Backlight__Toggle__current_state_LCD_ON( void )
+{
+    uint8_t retVal = HAL_ERROR;
+
+    HAL_TIM_PWM_Start_IgnoreAndReturn( HAL_OK );
+    HAL_TIM_PWM_Stop_IgnoreAndReturn( HAL_OK );
+
+    retVal = HEL_LCD_Backlight( &LCD_Handler, LCD_TOGGLE );
+    retVal = HEL_LCD_Backlight( &LCD_Handler, LCD_TOGGLE );
+
+    TEST_ASSERT_EQUAL( HAL_OK, retVal );
 }
 
 /**
@@ -232,9 +265,11 @@ void test__HEL_LCD_Backlight__Toggle( void )
 */
 void test__HEL_LCD_Backlight__unknown_value_default_case( void )
 {
-    HAL_GPIO_WritePin_Ignore( );
+    uint8_t retVal = HAL_OK;
 
-    HEL_LCD_Backlight( &LCD_Handler, 5u );
+    retVal = HEL_LCD_Backlight( &LCD_Handler, 0xFFu );
+
+    TEST_ASSERT_EQUAL( HAL_ERROR, retVal );
 }
 
 /**
@@ -288,4 +323,30 @@ void test__HEL_LCD_Contrast__valid_value_LCD_CONTRAST_1_return_HAL_OK( void )
     retValue = HEL_LCD_Contrast( &LCD_Handler, LCD_CONTRAST_1 );
 
     TEST_ASSERT_EQUAL( retValue, HAL_OK );
+}
+
+/**
+ *  @brief  Test case for HEL_LCD_Intensity value over max intensity.
+*/
+void test__HEL_LCD_Intensity__value_over_max_intensity_0xFF_return_false( void )
+{
+    uint8_t retValue = false;
+    uint8_t intensity = 0xFFu;
+
+    retValue = HEL_LCD_Intensity( &LCD_Handler, intensity );
+
+    TEST_ASSERT_EQUAL( false, retValue );
+}
+
+/**
+ *  @brief  Test case for HEL_LCD_Intensity valid intensity value.
+*/
+void test__HEL_LCD_Intensity__value_intensity_10_return_true( void )
+{
+    uint8_t retValue = false;
+    uint8_t intensity = 10u;
+
+    retValue = HEL_LCD_Intensity( &LCD_Handler, intensity );
+
+    TEST_ASSERT_EQUAL( true, retValue );
 }

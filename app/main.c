@@ -148,7 +148,7 @@ static void Watchdog_InitTask( void )
 {
     HAL_StatusTypeDef Status = HAL_ERROR;
 
-    //__HAL_RCC_WWDG_CLK_ENABLE( );
+    __HAL_RCC_WWDG_CLK_ENABLE( );
 
     h_watchdog.Instance         = WWDG;
     h_watchdog.Init.Prescaler   = WWDG_PRESCALER_32;
@@ -206,7 +206,7 @@ void safe_state( const char *file, uint32_t line, uint8_t error )
 
     HAL_GPIO_WritePin( GPIOA, GPIO_PIN_5, RESET );      /* Heartbeat LED turn off */
 
-    HEL_LCD_Backlight( &LCD_Handler, LCD_OFF );             
+    (void) HEL_LCD_Backlight( &LCD_Handler, LCD_OFF );             
 
     HAL_RTC_DeInit( &h_rtc );                               
 

@@ -11,6 +11,8 @@
 #include "mock_hel_lcd.h"
 #include "mock_queue.h"
 #include "mock_stm32g0xx_hal_spi.h"
+#include "mock_stm32g0xx_hal_tim.h"
+#include "mock_analogs.h"
 
 /**
  * @brief   reference to the ClockQueue.
@@ -74,6 +76,12 @@ APP_MsgTypeDef Display_AlarmNoConfig( APP_MsgTypeDef * );
 */
 APP_MsgTypeDef Display_ClearSecondLine( APP_MsgTypeDef * );
 
+/** 
+ * @brief Reference for the private function Display_Temperature. 
+ * @return  Message with the next event.
+*/
+APP_MsgTypeDef Display_Temperature( APP_MsgTypeDef * );
+
 /** @brief Reference for the private function TimeString. */
 void TimeString( char *, uint8_t, uint8_t, uint8_t );
 
@@ -82,6 +90,9 @@ void DateString( char *, uint8_t, uint8_t, uint16_t, uint8_t );
 
 /** @brief Reference for the private function AlarmString. */
 void AlarmString( char *, uint8_t, uint8_t );
+
+/** @brief Reference for the private function TemperatureString. */
+void TemperatureString( char *, int8_t );
 
 /**
  * @brief   test AlarmString function case "ALARM=00:00".
@@ -137,9 +148,12 @@ void test__Display_InitTask( void )
     AppQueue_initQueue_Ignore( );
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
     HAL_SPI_Init_IgnoreAndReturn( HAL_OK );
+    HAL_TIM_PWM_Init_IgnoreAndReturn( HAL_OK );
+    HAL_TIM_PWM_ConfigChannel_IgnoreAndReturn( HAL_OK );
+    HAL_TIM_PWM_Start_IgnoreAndReturn( HAL_OK );
     HEL_LCD_MspInit_Ignore( );
     HEL_LCD_Init_ExpectAnyArgsAndReturn( TRUE );
-    HEL_LCD_Backlight_Ignore( );
+    HEL_LCD_Backlight_ExpectAnyArgsAndReturn( HAL_OK );
 
     Display_InitTask( );
 }
@@ -160,6 +174,7 @@ void test__Display_PeriodicTask__Update_Display_message( void )
     HEL_LCD_SetCursor_ExpectAnyArgsAndReturn( HAL_OK );
     HEL_LCD_String_ExpectAnyArgsAndReturn( HAL_OK );
     HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
+    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
     Display_PeriodicTask( );
 }
@@ -210,9 +225,11 @@ void test__UpdateDisplay( void )
     HEL_LCD_SetCursor_ExpectAnyArgsAndReturn( HAL_OK );
     HEL_LCD_String_ExpectAnyArgsAndReturn( HAL_OK );
 
+    HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+
     nextEvent = Display_Update( &receivedMSG );
 
-    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_NONE );
+    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_TEMPERATURE );
 }
 
 /**
@@ -308,7 +325,7 @@ void test__DisplayChangeBacklightState( void )
     APP_MsgTypeDef nextEvent = {0};
     readMessage.displayBkl = LCD_ON;
 
-    HEL_LCD_Backlight_Ignore( );
+    HEL_LCD_Backlight_ExpectAnyArgsAndReturn( HAL_OK );
 
     nextEvent = Display_ChangeBacklightState( &readMessage );
 
@@ -421,4 +438,108 @@ void test__Display_AlarmActive__return_msg_with_DISPLAY_MSG_NONE(void)
     nextEventMsg = Display_AlarmActive( &pDisplayMsg );
 
     TEST_ASSERT_EQUAL( nextEventMsg.msg, DISPLAY_MSG_NONE );
+}
+
+/**
+ * @brief   Display_LcdTask unit test.
+ * 
+ * The initial value for the intensity is 100 and for the contrast is 0, using mock for the
+ * functions Analogs_GetContrast and Analogs_GetIntensity return values of 0's and only
+ * the intensity need to be changed.
+*/
+void test__Display_LcdTask__same_contrast_different_intensity( void )
+{
+    uint8_t contrast    = 0u;
+    uint8_t intensity   = 100u;
+
+    Analogs_GetContrast_IgnoreAndReturn( contrast );
+    Analogs_GetIntensity_IgnoreAndReturn( intensity );
+
+    HEL_LCD_Intensity_IgnoreAndReturn( HAL_OK );
+
+    Display_LcdTask( );
+}
+
+/**
+ * @brief   Display_LcdTask unit test.
+ * 
+ * The initial value for the intensity is 100 and for the contrast is 0, using mock for the
+ * functions Analogs_GetContrast and Analogs_GetIntensity return values of 10 and 100, respectively
+ * and only the contrast need to be changed.
+*/
+void test__Display_LcdTask__same_intensity_different_contrast( void )
+{
+    uint8_t contrast    = 10u;
+    uint8_t intensity   = 0u;
+
+    Analogs_GetContrast_IgnoreAndReturn( contrast );
+    Analogs_GetIntensity_IgnoreAndReturn( intensity );
+
+    HEL_LCD_Contrast_IgnoreAndReturn( HAL_OK );
+
+    Display_LcdTask( );
+}
+
+/**
+ * @brief   Display_Temperature unit test. 
+*/
+void test__Display_Temperature( void )
+{
+    APP_MsgTypeDef nextEvent = {0};
+    APP_MsgTypeDef readMsg = {0};
+    int8_t temp = 25;
+
+    Analogs_GetTemperature_IgnoreAndReturn( temp );
+
+    HEL_LCD_SetCursor_ExpectAnyArgsAndReturn( HAL_OK );
+    HEL_LCD_String_ExpectAnyArgsAndReturn( HAL_OK );
+
+    nextEvent = Display_Temperature( &readMsg );
+
+    TEST_ASSERT_EQUAL( DISPLAY_MSG_NONE, nextEvent.msg ); 
+}
+
+/**
+ * @brief   TemperatureString unit test 1.
+ * 
+*/
+void test__TemperatureString__temperature_110_degrees( void )
+{
+    int8_t temp = 110;
+    const char *expectedString = "110C";
+    char tempString[5]; 
+
+    TemperatureString( tempString, temp );
+
+    TEST_ASSERT_EQUAL_STRING_LEN( expectedString, tempString, 5);
+}
+
+/**
+ * @brief   TemperatureString unit test 2.
+ * 
+*/
+void test__TemperatureString__temperature_25_degrees( void )
+{
+    int8_t temp = 25;
+    const char *expectedString = " 25C";
+    char tempString[5]; 
+
+    TemperatureString( tempString, temp );
+
+    TEST_ASSERT_EQUAL_STRING_LEN( expectedString, tempString, 5);
+}
+
+/**
+ * @brief   TemperatureString unit test 3.
+ * 
+*/
+void test__TemperatureString__temperature_minus_40_degrees( void )
+{
+    int8_t temp = -40;
+    const char *expectedString = "-40C";
+    char tempString[5]; 
+
+    TemperatureString( tempString, temp );
+
+    TEST_ASSERT_EQUAL_STRING_LEN( expectedString, tempString, 5);
 }

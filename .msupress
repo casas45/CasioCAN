@@ -6,4 +6,6 @@ misra-c2012-8.4:app/callbacks.c         //their external linkages are declared a
 
 misra-c2012-2.4:app/bsp.h               //the defined enums are used to classify messages
 
+misra-c2012-2.4:app/analogs.h               //the defined enums are used to classify adc channels
+
 unreadVariable:app/scheduler.c          

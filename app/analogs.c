@@ -17,6 +17,8 @@
 #define TS_CAL2                 (int32_t)1381        /*!< TS_CAL2 value retrieved from TEMPSENSOR_CAL2_ADDR */
 #define TS_CAL1_TEMP            TEMPSENSOR_CAL1_TEMP    /*!< TS_CAL1 value */
 #define TS_CAL2_TEMP            TEMPSENSOR_CAL2_TEMP    /*!< TS_CAL2 value */
+#define CONTRAST_10_PERCENT     27              /*!< 10% of a contrast step (12-bit resolution) */
+#define INTENSITY_10_PERCENT    40              /*!< 10% of a intensity step (12-bit resolution) */
 
 /**
  * @brief   Array where DMA puts the ADC reads.
@@ -38,14 +40,11 @@ STATIC uint32_t AdcData[ N_ADC_CHANNELS_USED ];
  * The ADC is configured with a resolution of 12 bits and to be triggered by the trigger output of the
  * TIM2 on the rising edge, the scan sequence is set to fully configurable to get the measurements in
  * the desired order, first the temperature sensor, second the pot0 (intensity) and finally the pot1
- * (constrast). The sampling time common 1 si configured to 1.5 ADC cycles for the channels 0 and 1,
- * for the temperature sensor is used the sampling time common 2 and is set to 160.5 ADC cycles, this
- * is to get a time conversion greater than the ts_temp specified in the datasheet.
+ * (constrast). The sampling time common 1 si configured to 79.5 ADC cycles, this is to get a time 
+ * conversion greater than the ts_temp specified in the datasheet.
  * The ADC divider is set to 2.
- * Time conversion potentiometers.
- * t_conv = t_smpl + t_sar = ( 1.5 + 12.5 ) * t_adc_clk = 875 ns
- * Time conversion temperature sensor.
- * t_conv = t_smpl + t_sar = ( 160.5 + 12.5 ) * t_adc_clk = 10.81 us
+ * Time conversion.
+ * t_conv = t_smpl + t_sar = ( 79.5 + 12.5 ) * t_adc_clk = 5.75 us
  * The oversampling configuration is set with a ratio of 4, and the division coefficient is set to 4.
  */
 void Analogs_Init( void )
@@ -72,7 +71,7 @@ void Analogs_Init( void )
     assert_error( Status == HAL_OK, TIM_RET_ERROR );
 
     TIM2_MasterConfig.MasterOutputTrigger = TIM_TRGO_UPDATE;
-    TIM2_MasterConfig.MasterSlaveMode     = TIM_MASTERSLAVEMODE_DISABLE;
+    TIM2_MasterConfig.MasterSlaveMode     = TIM_MASTERSLAVEMODE_ENABLE;
 
     Status = HAL_TIMEx_MasterConfigSynchronization( &TIM2_Handler, &TIM2_MasterConfig );
     assert_error( Status == HAL_OK, TIM_RET_ERROR );
@@ -101,14 +100,15 @@ void Analogs_Init( void )
     ADC_Handler.Init.Resolution                 = ADC_RESOLUTION12b;
     ADC_Handler.Init.ScanConvMode               = ADC_SCAN_ENABLE;
     ADC_Handler.Init.DataAlign                  = ADC_DATAALIGN_RIGHT;
-    ADC_Handler.Init.SamplingTimeCommon1        = ADC_SAMPLETIME_1CYCLE_5;
-    ADC_Handler.Init.SamplingTimeCommon2        = ADC_SAMPLETIME_160CYCLES_5;
+    ADC_Handler.Init.SamplingTimeCommon1        = ADC_SAMPLETIME_79CYCLES_5;
     ADC_Handler.Init.ExternalTrigConv           = ADC_EXTERNALTRIG_T2_TRGO;
     ADC_Handler.Init.ExternalTrigConvEdge       = ADC_EXTERNALTRIG_EDGE_RISING;
     ADC_Handler.Init.NbrOfConversion            = N_ADC_CHANNELS_USED;
     ADC_Handler.Init.EOCSelection               = ADC_EOC_SEQ_CONV;
     ADC_Handler.Init.Overrun                    = ADC_OVR_DATA_OVERWRITTEN;
     ADC_Handler.Init.DMAContinuousRequests      = ENABLE;
+
+    ADC_Handler.Init.OversamplingMode           = ENABLE;
     ADC_Handler.Init.Oversampling.Ratio         = ADC_OVERSAMPLING_RATIO;
     ADC_Handler.Init.Oversampling.RightBitShift = ADC_RIGHTBITSHIFT_2;
     ADC_Handler.Init.Oversampling.TriggeredMode = ADC_TRIGGEREDMODE_SINGLE_TRIGGER;
@@ -133,15 +133,29 @@ void Analogs_Init( void )
     /* ADC channel configuration temperature sensor */
     sChanConfig.Channel      = ADC_CHANNEL_TEMPSENSOR;
     sChanConfig.Rank         = ADC_REGULAR_RANK_1;
-    sChanConfig.SamplingTime = ADC_SAMPLINGTIME_COMMON_2;
+    sChanConfig.SamplingTime = ADC_SAMPLINGTIME_COMMON_1;
     Status = HAL_ADC_ConfigChannel( &ADC_Handler, &sChanConfig );
     assert_error( Status == HAL_OK, ADC_RET_ERROR );
 
     /* ADC channel configuration internal Vref */
     sChanConfig.Channel      = ADC_CHANNEL_VREFINT;
-    sChanConfig.Rank         = ADC_REGULAR_RANK_4;
+    sChanConfig.Rank         = ADC_REGULAR_RANK_6;
     sChanConfig.SamplingTime = ADC_SAMPLINGTIME_COMMON_1;
     Status = HAL_ADC_ConfigChannel( &ADC_Handler, &sChanConfig );
+    assert_error( Status == HAL_OK, ADC_RET_ERROR );
+
+    /* ADC channel 5 configuration  */
+    sChanConfig.Channel      = ADC_CHANNEL_6;
+    sChanConfig.Rank         = ADC_REGULAR_RANK_4;
+    sChanConfig.SamplingTime = ADC_SAMPLINGTIME_COMMON_1;
+    HAL_ADC_ConfigChannel( &ADC_Handler, &sChanConfig );
+    assert_error( Status == HAL_OK, ADC_RET_ERROR );
+
+    /* ADC channel 6 configuration */
+    sChanConfig.Channel      = ADC_CHANNEL_7;
+    sChanConfig.Rank         = ADC_REGULAR_RANK_5;
+    sChanConfig.SamplingTime = ADC_SAMPLINGTIME_COMMON_1;
+    HAL_ADC_ConfigChannel( &ADC_Handler, &sChanConfig );
     assert_error( Status == HAL_OK, ADC_RET_ERROR );
 
     Status = HAL_ADCEx_Calibration_Start( &ADC_Handler );
@@ -193,10 +207,18 @@ uint8_t Analogs_GetContrast( void )
 {
     uint8_t contrast = 0;
 
+    bool FuncSafety_flg;
+
     if ( AdcData[ CONTRAST_INDEX ] <= MAX_ADC_VALUE )
     {
         contrast = AdcData[ CONTRAST_INDEX ] / ADC_CONTRAST_DIV;
     }
+
+    FuncSafety_flg = ( (int32_t)AdcData[CONTRAST_INDEX] ) <= (( (int32_t) AdcData[POT1_ADC7_INDEX] ) + CONTRAST_10_PERCENT);
+    assert_error( FuncSafety_flg, POT1_H_READING_ERROR );
+
+    FuncSafety_flg = ( (int32_t)AdcData[CONTRAST_INDEX] ) >= (( (int32_t) AdcData[POT1_ADC7_INDEX] ) - CONTRAST_10_PERCENT);
+    assert_error( FuncSafety_flg, POT1_L_READING_ERROR );   
 
     return contrast;
 }
@@ -215,10 +237,18 @@ uint8_t Analogs_GetIntensity( void )
 {
     uint8_t intensity = 0;
 
+    bool FuncSafety_flg;
+  
     if ( AdcData[ INTENSITY_INDEX ] <= MAX_ADC_VALUE )
     {
         intensity = ( ( AdcData[ INTENSITY_INDEX ] * LCD_INTENSITY_INTERVALS ) / MAX_ADC_VALUE ) * LCD_INTENSITY_INTERVALS;
-    }    
+    }
+
+    FuncSafety_flg = ( (int32_t)AdcData[INTENSITY_INDEX] ) <= (( (int32_t) AdcData[POT0_ADC6_INDEX] ) + INTENSITY_10_PERCENT);
+    assert_error( FuncSafety_flg, POT0_H_READING_ERROR ); 
+
+    FuncSafety_flg = ( ( (int32_t)AdcData[INTENSITY_INDEX] ) >= (( (int32_t) AdcData[POT0_ADC6_INDEX] ) - INTENSITY_10_PERCENT));
+    assert_error( FuncSafety_flg, POT0_L_READING_ERROR );    
 
     return intensity;
 }
