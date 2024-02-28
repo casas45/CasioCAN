@@ -67,6 +67,9 @@ void test__Analogs_GetTemperature__Vref_4100_return_temperature_0( void )
     AdcData[TEMP_INDEX] = 4095u;
     AdcData[VREF_INDEX] = 4100u;
 
+    HAL_ADC_Stop_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_ADC_Start_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+
     temperature = Analogs_GetTemperature( );
 
     TEST_ASSERT_EQUAL_INT8( expect_value, temperature );
@@ -85,6 +88,9 @@ void test__Analogs_GetTemperature__AdcTemp_4100_return_temperature_0( void )
 
     AdcData[TEMP_INDEX] = 4100u;
     AdcData[VREF_INDEX] = 4095u;
+
+    HAL_ADC_Stop_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_ADC_Start_DMA_ExpectAnyArgsAndReturn( HAL_OK );
 
     temperature = Analogs_GetTemperature( );
 
@@ -105,6 +111,9 @@ void test__Analogs_GetTemperature__AdcTemp_950_return_temperature_33_degrees( vo
     AdcData[TEMP_INDEX] = 950u;
     AdcData[VREF_INDEX] = 1507u;
 
+    HAL_ADC_Stop_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_ADC_Start_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+
     temperature = Analogs_GetTemperature( );
 
     TEST_ASSERT_EQUAL_INT8( expect_value, temperature );
@@ -124,6 +133,9 @@ void test__Analogs_GetTemperature__AdcTemp_800_return_temperature_minus_13_degre
     AdcData[TEMP_INDEX] = 800u;
     AdcData[VREF_INDEX] = 1507u;
 
+    HAL_ADC_Stop_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_ADC_Start_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+
     temperature = Analogs_GetTemperature( );
 
     TEST_ASSERT_EQUAL_INT8( expect_value, temperature );
@@ -141,6 +153,9 @@ void test__Analogs_GetContrast__AdcValue_4095_return_contrast_15( void )
     uint8_t contrast;
 
     AdcData[CONTRAST_INDEX] = 4095u;
+
+    HAL_ADC_Stop_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_ADC_Start_DMA_ExpectAnyArgsAndReturn( HAL_OK );
 
     contrast = Analogs_GetContrast( );
 
@@ -160,6 +175,9 @@ void test__Analogs_GetContrast__AdcValue_4200_return_contrast_0( void )
 
     AdcData[CONTRAST_INDEX] = 4200u;
 
+    HAL_ADC_Stop_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_ADC_Start_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+
     contrast = Analogs_GetContrast( );
 
     TEST_ASSERT_EQUAL( contrast, 0u );
@@ -177,6 +195,9 @@ void test__Analogs_GetContrast__AdcValue_1200_return_contrast_4( void )
 
     AdcData[CONTRAST_INDEX] = 1200u;
 
+    HAL_ADC_Stop_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_ADC_Start_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+
     contrast = Analogs_GetContrast( );
 
     TEST_ASSERT_EQUAL( contrast, 4u );
@@ -193,6 +214,9 @@ void test__Analogs_GetContrast__AdcValue_0_return_contrast_0( void )
     uint8_t contrast;
 
     AdcData[CONTRAST_INDEX] = 0u;
+
+    HAL_ADC_Stop_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_ADC_Start_DMA_ExpectAnyArgsAndReturn( HAL_OK );
 
     contrast = Analogs_GetContrast( );
 
@@ -212,6 +236,9 @@ void test__Analogs_GetIntensity__AdcValue_4095_return_intensity_100( void )
 
     AdcData[INTENSITY_INDEX] = 4095u;
 
+    HAL_ADC_Stop_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_ADC_Start_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+
     intensity = Analogs_GetIntensity( );
 
     TEST_ASSERT_EQUAL( intensity, 100u );
@@ -229,6 +256,9 @@ void test__Analogs_GetIntensity__AdcValue_4200_return_intensity_0( void )
 
     AdcData[INTENSITY_INDEX] = 4200u;
 
+    HAL_ADC_Stop_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_ADC_Start_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+
     intensity = Analogs_GetIntensity( );
 
     TEST_ASSERT_EQUAL( intensity, 0u );
@@ -245,6 +275,9 @@ void test__Analogs_GetIntensity__AdcValue_0_return_intensity_0( void )
 
     AdcData[INTENSITY_INDEX] = 0u;
 
+    HAL_ADC_Stop_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_ADC_Start_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+
     intensity = Analogs_GetIntensity( );
 
     TEST_ASSERT_EQUAL( intensity, 0u );
@@ -260,6 +293,9 @@ void test__Analogs_GetIntensity__AdcValue_1200_return_intensity_20( void )
     uint8_t intensity;
 
     AdcData[INTENSITY_INDEX] = 1200u;
+
+    HAL_ADC_Stop_DMA_ExpectAnyArgsAndReturn( HAL_OK );
+    HAL_ADC_Start_DMA_ExpectAnyArgsAndReturn( HAL_OK );
 
     intensity = Analogs_GetIntensity( );
 

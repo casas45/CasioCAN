@@ -174,7 +174,6 @@ void test__Display_PeriodicTask__Update_Display_message( void )
     HEL_LCD_SetCursor_ExpectAnyArgsAndReturn( HAL_OK );
     HEL_LCD_String_ExpectAnyArgsAndReturn( HAL_OK );
     HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
-    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
 
     Display_PeriodicTask( );
 }
@@ -229,7 +228,7 @@ void test__UpdateDisplay( void )
 
     nextEvent = Display_Update( &receivedMSG );
 
-    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_TEMPERATURE );
+    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_NONE );
 }
 
 /**

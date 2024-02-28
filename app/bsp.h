@@ -106,6 +106,7 @@ typedef struct _APP_MsgTypeDef
     uint8_t msg;        /*!< Store the message type to send*/
     APP_TmTypeDef tm;   /*!< time and date structure*/
     uint8_t displayBkl; /*!< Store the next state of the LCD backlight */
+    int8_t temperature; /*!< Store the temperature value */
 } APP_MsgTypeDef;
 
 /**
@@ -132,9 +133,10 @@ typedef enum
     CLOCK_MSG_DISPLAY,          /*!< Msg to update display */
     CLOCK_MSG_ALARM_ACTIVATED,  /*!< Msg to activate the alarm */
     CLOCK_MSG_DEACTIVATE_ALARM, /*!< Msg to deactivate the alarm */
-    CLOCK_MSG_BTN_PRESSED,      
-    CLOCK_MSG_BTN_RELEASED,
-    CLOCK_MSG_GET_ALARM,
+    CLOCK_MSG_BTN_PRESSED,      /*!< Button pressed event */   
+    CLOCK_MSG_BTN_RELEASED,     /*!< Button released event */
+    CLOCK_MSG_GET_ALARM,        /*!< Get alarm event */
+    CLOCK_MSG_GET_TEMPERATURE,  /*!< Get temperature event */
     N_CLK_EVENTS,               /*!< Number of events in clock event machine*/
     CLK_MSG_NONE
 } ClkMessages;

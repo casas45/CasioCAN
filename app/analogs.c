@@ -26,6 +26,8 @@
 /* cppcheck-suppress misra-c2012-8.4 ; false warning, the macro STATIC makes the variable static */
 STATIC uint32_t AdcData[ N_ADC_CHANNELS_USED ];
 
+static ADC_HandleTypeDef ADC_Handler = {0};
+
 /**
  * @brief   Function to initialize the ADC, DMA and TIMER 2.
  *
@@ -50,12 +52,12 @@ STATIC uint32_t AdcData[ N_ADC_CHANNELS_USED ];
 void Analogs_Init( void )
 {
     TIM_HandleTypeDef TIM2_Handler = {0};
+
     TIM_MasterConfigTypeDef TIM2_MasterConfig = {0};
 
-    ADC_HandleTypeDef ADC_Handler = {0};
     ADC_ChannelConfTypeDef sChanConfig = {0};
 
-    DMA_HandleTypeDef DMA_Handler = {0};
+    static DMA_HandleTypeDef DMA_Handler = {0};
 
     HAL_StatusTypeDef Status = HAL_ERROR;
 
@@ -180,15 +182,27 @@ void Analogs_Init( void )
 */
 int8_t Analogs_GetTemperature( void )
 {
+    HAL_StatusTypeDef Status = HAL_ERROR;
     int8_t temp = 0;
+    uint32_t temperature;
+    uint32_t voltage_ref;
 
-    if ( ( AdcData[TEMP_INDEX] <= MAX_ADC_VALUE ) && ( AdcData[VREF_INDEX] <= MAX_ADC_VALUE ) )
+    Status = HAL_ADC_Stop_DMA( &ADC_Handler );          /*disable dma transfer*/
+    assert_error( Status == HAL_OK, ADC_RET_ERROR );
+    
+    temperature = AdcData[ TEMP_INDEX ];                /* back up AdcData into local variables */
+    voltage_ref = AdcData[ VREF_INDEX ];
+
+    Status = HAL_ADC_Start_DMA( &ADC_Handler, &AdcData[0], N_ADC_CHANNELS_USED );   /* restart ADC and DMA*/
+    assert_error( Status == HAL_OK, ADC_RET_ERROR );
+
+    if ( ( temperature <= MAX_ADC_VALUE ) && ( voltage_ref <= MAX_ADC_VALUE ) )
     {
         uint16_t Vref;
         
-        Vref =  ( VREF_CHARAC * VREFINT_CAL_VREF ) / (AdcData[VREF_INDEX]);
+        Vref =  ( VREF_CHARAC * VREFINT_CAL_VREF ) / (voltage_ref);
         
-        temp = ((( ((int32_t)((AdcData[TEMP_INDEX] * Vref) / TEMPSENSOR_CAL_VREFANALOG) - TS_CAL1) ) * (TS_CAL2_TEMP - TS_CAL1_TEMP) ) / (TS_CAL2 - TS_CAL1) ) + TS_CAL1_TEMP; 
+        temp = ((( ((int32_t)((temperature * Vref) / TEMPSENSOR_CAL_VREFANALOG) - TS_CAL1) ) * (TS_CAL2_TEMP - TS_CAL1_TEMP) ) / (TS_CAL2 - TS_CAL1) ) + TS_CAL1_TEMP; 
     }
 
     return temp;
@@ -205,19 +219,30 @@ int8_t Analogs_GetTemperature( void )
  */
 uint8_t Analogs_GetContrast( void )
 {
+    HAL_StatusTypeDef Status = HAL_ERROR;
     uint8_t contrast = 0;
-
     bool FuncSafety_flg;
+    uint32_t contrastADC;
+    uint32_t contrastADC_sec_lecture;
 
-    if ( AdcData[ CONTRAST_INDEX ] <= MAX_ADC_VALUE )
+    Status = HAL_ADC_Stop_DMA( &ADC_Handler );              /*disable dma transfer*/
+    assert_error( Status == HAL_OK, ADC_RET_ERROR );
+    
+    contrastADC = AdcData[ CONTRAST_INDEX ];                 /* back up AdcData into local variables */
+    contrastADC_sec_lecture = AdcData[ POT1_ADC7_INDEX ];
+
+    Status = HAL_ADC_Start_DMA( &ADC_Handler, &AdcData[0], N_ADC_CHANNELS_USED );   /* restart ADC and DMA*/
+    assert_error( Status == HAL_OK, ADC_RET_ERROR );
+
+    if ( contrastADC <= MAX_ADC_VALUE )
     {
-        contrast = AdcData[ CONTRAST_INDEX ] / ADC_CONTRAST_DIV;
+        contrast = (uint8_t)( contrastADC / ADC_CONTRAST_DIV );
     }
 
-    FuncSafety_flg = ( (int32_t)AdcData[CONTRAST_INDEX] ) <= (( (int32_t) AdcData[POT1_ADC7_INDEX] ) + CONTRAST_10_PERCENT);
+    FuncSafety_flg = ( (int32_t)contrastADC ) <= (( (int32_t) contrastADC_sec_lecture ) + CONTRAST_10_PERCENT);
     assert_error( FuncSafety_flg, POT1_H_READING_ERROR );
 
-    FuncSafety_flg = ( (int32_t)AdcData[CONTRAST_INDEX] ) >= (( (int32_t) AdcData[POT1_ADC7_INDEX] ) - CONTRAST_10_PERCENT);
+    FuncSafety_flg = ( (int32_t)contrastADC ) >= (( (int32_t) contrastADC_sec_lecture ) - CONTRAST_10_PERCENT);
     assert_error( FuncSafety_flg, POT1_L_READING_ERROR );   
 
     return contrast;
@@ -235,19 +260,30 @@ uint8_t Analogs_GetContrast( void )
  */
 uint8_t Analogs_GetIntensity( void )
 {
+    HAL_StatusTypeDef Status = HAL_ERROR;
     uint8_t intensity = 0;
-
     bool FuncSafety_flg;
+    uint32_t intensityADC;
+    uint32_t intensityADC_sec_lecture;
+
+    Status = HAL_ADC_Stop_DMA( &ADC_Handler );              /*disable dma transfer*/
+    assert_error( Status == HAL_OK, ADC_RET_ERROR );
+    
+    intensityADC = AdcData[ INTENSITY_INDEX ];               /* back up AdcData into local variables */
+    intensityADC_sec_lecture = AdcData[ POT0_ADC6_INDEX ];
+
+    Status = HAL_ADC_Start_DMA( &ADC_Handler, &AdcData[0], N_ADC_CHANNELS_USED );   /* restart ADC and DMA*/
+    assert_error( Status == HAL_OK, ADC_RET_ERROR );
   
     if ( AdcData[ INTENSITY_INDEX ] <= MAX_ADC_VALUE )
     {
-        intensity = ( ( AdcData[ INTENSITY_INDEX ] * LCD_INTENSITY_INTERVALS ) / MAX_ADC_VALUE ) * LCD_INTENSITY_INTERVALS;
+        intensity = (uint8_t)( ( ( intensityADC * LCD_INTENSITY_INTERVALS ) / MAX_ADC_VALUE ) * LCD_INTENSITY_INTERVALS );
     }
 
-    FuncSafety_flg = ( (int32_t)AdcData[INTENSITY_INDEX] ) <= (( (int32_t) AdcData[POT0_ADC6_INDEX] ) + INTENSITY_10_PERCENT);
+    FuncSafety_flg = ( (int32_t)intensityADC ) <= (( (int32_t) intensityADC_sec_lecture ) + INTENSITY_10_PERCENT);
     assert_error( FuncSafety_flg, POT0_H_READING_ERROR ); 
 
-    FuncSafety_flg = ( ( (int32_t)AdcData[INTENSITY_INDEX] ) >= (( (int32_t) AdcData[POT0_ADC6_INDEX] ) - INTENSITY_10_PERCENT));
+    FuncSafety_flg = ( ( (int32_t)intensityADC ) >= (( (int32_t) intensityADC_sec_lecture ) - INTENSITY_10_PERCENT));
     assert_error( FuncSafety_flg, POT0_L_READING_ERROR );    
 
     return intensity;

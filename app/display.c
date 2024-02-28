@@ -232,7 +232,7 @@ void Display_LcdTask( void )
 */
 STATIC APP_MsgTypeDef Display_Update ( APP_MsgTypeDef *pDisplayMsg )
 {
-    APP_MsgTypeDef nextEvent = {0};
+    APP_MsgTypeDef nextEvent = { .msg = DISPLAY_MSG_NONE};
 
     HAL_StatusTypeDef Status = HAL_ERROR;
 
@@ -255,10 +255,6 @@ STATIC APP_MsgTypeDef Display_Update ( APP_MsgTypeDef *pDisplayMsg )
 
     Status = HEL_LCD_String( &LCD_Handler, lcd_row_1_time );
     assert_error( Status == HAL_OK, SPI_RET_ERROR );
-
-    nextEvent.msg = DISPLAY_MSG_TEMPERATURE;
-    Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextEvent );
-    assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
     return nextEvent;
 }
@@ -435,15 +431,12 @@ STATIC APP_MsgTypeDef Display_ClearSecondLine( APP_MsgTypeDef *pDisplayMsg )
 STATIC APP_MsgTypeDef Display_Temperature( APP_MsgTypeDef *pDisplayMsg )
 {
     (void) pDisplayMsg;
-
+    
     APP_MsgTypeDef nextEvent = {.msg = DISPLAY_MSG_NONE};
-    int8_t temperature;
     char TempString[5];
     HAL_StatusTypeDef Status = HAL_ERROR;
 
-    temperature = Analogs_GetTemperature( );
-
-    TemperatureString( TempString, temperature );
+    TemperatureString( TempString, pDisplayMsg->temperature );
 
     Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 11u );
     assert_error( Status == HAL_OK, LCD_RET_ERROR );
