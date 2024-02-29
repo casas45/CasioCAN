@@ -26,7 +26,10 @@
 /* cppcheck-suppress misra-c2012-8.4 ; false warning, the macro STATIC makes the variable static */
 STATIC uint32_t AdcData[ N_ADC_CHANNELS_USED ];
 
-static ADC_HandleTypeDef ADC_Handler = {0};
+/**
+ * @brief   Tim Handle struct.
+*/
+static TIM_HandleTypeDef TIM2_Handler = {0};
 
 /**
  * @brief   Function to initialize the ADC, DMA and TIMER 2.
@@ -51,7 +54,7 @@ static ADC_HandleTypeDef ADC_Handler = {0};
  */
 void Analogs_Init( void )
 {
-    TIM_HandleTypeDef TIM2_Handler = {0};
+    ADC_HandleTypeDef ADC_Handler = {0};
 
     TIM_MasterConfigTypeDef TIM2_MasterConfig = {0};
 
@@ -187,13 +190,13 @@ int8_t Analogs_GetTemperature( void )
     uint32_t temperature;
     uint32_t voltage_ref;
 
-    Status = HAL_ADC_Stop_DMA( &ADC_Handler );          /*disable dma transfer*/
-    assert_error( Status == HAL_OK, ADC_RET_ERROR );
+    Status = HAL_TIM_Base_Stop( &TIM2_Handler );            /* Stop the timer to prevent triggering the ADC */
+    assert_error( Status == HAL_OK, TIM_RET_ERROR );
     
     temperature = AdcData[ TEMP_INDEX ];                /* back up AdcData into local variables */
     voltage_ref = AdcData[ VREF_INDEX ];
 
-    Status = HAL_ADC_Start_DMA( &ADC_Handler, &AdcData[0], N_ADC_CHANNELS_USED );   /* restart ADC and DMA*/
+    Status = HAL_TIM_Base_Start( &TIM2_Handler );           /* restart timer*/
     assert_error( Status == HAL_OK, ADC_RET_ERROR );
 
     if ( ( temperature <= MAX_ADC_VALUE ) && ( voltage_ref <= MAX_ADC_VALUE ) )
@@ -225,13 +228,13 @@ uint8_t Analogs_GetContrast( void )
     uint32_t contrastADC;
     uint32_t contrastADC_sec_lecture;
 
-    Status = HAL_ADC_Stop_DMA( &ADC_Handler );              /*disable dma transfer*/
-    assert_error( Status == HAL_OK, ADC_RET_ERROR );
+    Status = HAL_TIM_Base_Stop( &TIM2_Handler );            /* Stop the timer to prevent triggering the ADC*/
+    assert_error( Status == HAL_OK, TIM_RET_ERROR );
     
     contrastADC = AdcData[ CONTRAST_INDEX ];                 /* back up AdcData into local variables */
     contrastADC_sec_lecture = AdcData[ POT1_ADC7_INDEX ];
 
-    Status = HAL_ADC_Start_DMA( &ADC_Handler, &AdcData[0], N_ADC_CHANNELS_USED );   /* restart ADC and DMA*/
+    Status = HAL_TIM_Base_Start( &TIM2_Handler );           /* restart timer*/
     assert_error( Status == HAL_OK, ADC_RET_ERROR );
 
     if ( contrastADC <= MAX_ADC_VALUE )
@@ -266,13 +269,13 @@ uint8_t Analogs_GetIntensity( void )
     uint32_t intensityADC;
     uint32_t intensityADC_sec_lecture;
 
-    Status = HAL_ADC_Stop_DMA( &ADC_Handler );              /*disable dma transfer*/
-    assert_error( Status == HAL_OK, ADC_RET_ERROR );
+    Status = HAL_TIM_Base_Stop( &TIM2_Handler );            /* Stop the timer to prevent triggering the ADC*/
+    assert_error( Status == HAL_OK, TIM_RET_ERROR );
     
     intensityADC = AdcData[ INTENSITY_INDEX ];               /* back up AdcData into local variables */
     intensityADC_sec_lecture = AdcData[ POT0_ADC6_INDEX ];
 
-    Status = HAL_ADC_Start_DMA( &ADC_Handler, &AdcData[0], N_ADC_CHANNELS_USED );   /* restart ADC and DMA*/
+    Status = HAL_TIM_Base_Start( &TIM2_Handler );           /* restart timer*/
     assert_error( Status == HAL_OK, ADC_RET_ERROR );
   
     if ( AdcData[ INTENSITY_INDEX ] <= MAX_ADC_VALUE )
