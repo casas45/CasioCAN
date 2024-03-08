@@ -186,12 +186,16 @@ int8_t Analogs_GetTemperature( void )
     uint32_t temperature;
     uint32_t voltage_ref;
 
+    #ifndef UTEST
     __disable_irq( );
-    
+    #endif
+
     temperature = AdcData[ TEMP_INDEX ];                
     voltage_ref = AdcData[ VREF_INDEX ];
 
+    #ifndef UTEST
     __enable_irq( );
+    #endif
 
     if ( ( temperature <= MAX_ADC_VALUE ) && ( voltage_ref <= MAX_ADC_VALUE ) )
     {
@@ -221,12 +225,16 @@ uint8_t Analogs_GetContrast( void )
     uint32_t contrastADC;
     uint32_t contrastADC_sec_lecture;
 
+    #ifndef UTEST
     __disable_irq( );
+    #endif
     
     contrastADC = AdcData[ CONTRAST_INDEX ];                 
     contrastADC_sec_lecture = AdcData[ POT1_ADC7_INDEX ];
 
+    #ifndef UTEST
     __enable_irq( );
+    #endif
 
     if ( contrastADC <= MAX_ADC_VALUE )
     {
@@ -259,12 +267,16 @@ uint8_t Analogs_GetIntensity( void )
     uint32_t intensityADC;
     uint32_t intensityADC_sec_lecture;
 
+    #ifndef UTEST
     __disable_irq( );
+    #endif
     
     intensityADC = AdcData[ INTENSITY_INDEX ];               /* back up AdcData into local variables */
     intensityADC_sec_lecture = AdcData[ POT0_ADC6_INDEX ];
 
+    #ifndef UTEST
     __enable_irq( );
+    #endif
   
     if ( AdcData[ INTENSITY_INDEX ] <= MAX_ADC_VALUE )
     {
