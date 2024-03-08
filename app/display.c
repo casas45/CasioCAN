@@ -197,7 +197,9 @@ void Display_LcdTask( void )
 
     if ( new_contrast != current_contrast )
     {
-        HAL_StatusTypeDef Status = HAL_ERROR; 
+        HAL_StatusTypeDef Status = HAL_ERROR;
+
+        current_contrast = new_contrast;
 
         Status = HEL_LCD_Contrast( &LCD_Handler, new_contrast );
         assert_error( Status == HAL_OK, LCD_RET_ERROR );
@@ -208,6 +210,8 @@ void Display_LcdTask( void )
     if ( new_intensity != current_intensity )
     {
         uint8_t Status_Intensity = false;
+
+        current_intensity = new_intensity;
 
         Status_Intensity = HEL_LCD_Intensity( &LCD_Handler, new_intensity );
         assert_error( Status_Intensity == true, LCD_RET_ERROR );
