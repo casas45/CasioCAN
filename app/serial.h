@@ -6,12 +6,6 @@
 #ifndef SERIAL_H__
 #define SERIAL_H__
 
-#ifndef UTEST
-#define STATIC static       /*!< Macro to remove static keyword only for unit tests */
-#else
-#define STATIC
-#endif
-
 #define FILTERS_N           0x03u       /*!< 3 filters are configured in FDCAN module*/
 #define ID_TIME_MSG         0x111u      /*!< TIME ID*/
 #define ID_DATE_MSG         0x127u      /*!< DATE ID*/

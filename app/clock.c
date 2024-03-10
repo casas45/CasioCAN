@@ -60,8 +60,6 @@ STATIC APP_MsgTypeDef Clock_ButtonReleased( APP_MsgTypeDef *PtrMsgClk );
 
 STATIC APP_MsgTypeDef Clock_GetAlarm( APP_MsgTypeDef *PtrMsgClk );
 
-STATIC APP_MsgTypeDef Clock_Get_Temperature( APP_MsgTypeDef *PtrMsgClk );
-
 /**
  * @brief   Function to initialize RTC module and ClkQueue.
  *
@@ -246,8 +244,7 @@ void Clock_PeriodicTask( void )
     Clock_Deactivate_Alarm,
     Clock_ButtonPressed,
     Clock_ButtonReleased,
-    Clock_GetAlarm,
-    Clock_Get_Temperature
+    Clock_GetAlarm
     };
 
     while( ( HIL_QUEUE_isQueueEmptyISR( &ClockQueue ) == FALSE ) )
@@ -439,12 +436,13 @@ STATIC APP_MsgTypeDef Clock_Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
     updateMsg.tm.tm_year = sDate.Year;
     updateMsg.tm.tm_wday = sDate.WeekDay;
 
-    /*Write to the clock queue*/
-    updateMsg.msg = CLOCK_MSG_GET_TEMPERATURE;
-    Status = HIL_QUEUE_writeDataISR( &ClockQueue, &updateMsg );
+    /*Write to the display queue to show temp */
+    updateMsg.temperature = Analogs_GetTemperature( );
+    updateMsg.msg = DISPLAY_MSG_TEMPERATURE;
+    Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &updateMsg );
     assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
-    /*Write to the display queue*/
+    /*Write to the display queue to show time and date */
     updateMsg.msg = DISPLAY_MSG_UPDATE;
     Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &updateMsg );
     assert_error( Status == TRUE, QUEUE_RET_ERROR );
@@ -665,32 +663,6 @@ STATIC APP_MsgTypeDef Clock_GetAlarm( APP_MsgTypeDef *PtrMsgClk )
     assert_error( Status == TRUE, QUEUE_RET_ERROR );
 
     return alarmMsg;
-}
-
-/**
- * @brief Function to get the internal temperature.
- * 
- * Using the function Analogs_GetTemperature the temperature value is retrieved and send
- * to the LCD to show it.
- * 
- * @param   PtrMsgClk Pointer to the read message.
- * 
- * @retval  The next display event.
-*/
-STATIC APP_MsgTypeDef Clock_Get_Temperature( APP_MsgTypeDef *PtrMsgClk )
-{
-    (void) PtrMsgClk;
-
-    APP_MsgTypeDef nextDisplayEvent = { .msg = DISPLAY_MSG_NONE };
-    uint8_t Status = HAL_ERROR;
-
-    nextDisplayEvent.temperature = Analogs_GetTemperature( );
-
-    nextDisplayEvent.msg = DISPLAY_MSG_TEMPERATURE;
-    Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &nextDisplayEvent );
-    assert_error( Status == TRUE, QUEUE_RET_ERROR );
-
-    return nextDisplayEvent;
 }
 
 /**

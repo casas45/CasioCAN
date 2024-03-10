@@ -469,7 +469,7 @@ void test__Display_LcdTask__same_contrast_different_intensity( void )
 void test__Display_LcdTask__same_intensity_different_contrast( void )
 {
     uint8_t contrast    = 10u;
-    uint8_t intensity   = 0u;
+    uint8_t intensity   = 100u;
 
     Analogs_GetContrast_IgnoreAndReturn( contrast );
     Analogs_GetIntensity_IgnoreAndReturn( intensity );

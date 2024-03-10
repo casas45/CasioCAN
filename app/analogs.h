@@ -8,12 +8,6 @@
 #ifndef ANALOGS_H
 #define ANALOGS_H
 
-#ifndef UTEST
-#define STATIC static       /*!< Macro to remove static keyword only for unit tests */
-#else
-#define STATIC
-#endif
-
 /**
  * @brief   enum to organize the ADC channels
 */

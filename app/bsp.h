@@ -16,8 +16,13 @@
 #ifndef UTEST
 #define assert_error(expr, error)           ((expr) ? (void)0U : safe_state(__FILE__, __LINE__, (error))) /*!< Macro to handle errrors */
 extern void safe_state( const char *file, uint32_t line, uint8_t error );
+
+#define STATIC static       /*!< Macro to remove static keyword only for unit tests */
+
 #else
 #define assert_error(expr, error)           ((expr) ? (void)0U : (void)(error) ) /*!< Macro to handle errrors */
+
+#define STATIC
 #endif
 
 #define PERIOD_SERIAL_TASK      10u         /*!< Serial task periodicity */

@@ -287,6 +287,7 @@ void test__Clock_PeriodicTask__display_msg_case_DISPLAY( void )
 {
     APP_MsgTypeDef receivedMSG = {0};
     receivedMSG.msg = CLOCK_MSG_DISPLAY;
+    int8_t temp = 25;
 
     HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( FALSE );
     HIL_QUEUE_readDataISR_ExpectAnyArgsAndReturn( TRUE );
@@ -295,6 +296,7 @@ void test__Clock_PeriodicTask__display_msg_case_DISPLAY( void )
     HAL_RTC_GetTime_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetDate_ExpectAnyArgsAndReturn( HAL_OK );
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+    Analogs_GetTemperature_IgnoreAndReturn( temp );
 
     Clock_PeriodicTask( );
 }
@@ -438,10 +440,12 @@ void test__Clock_Send_Display_Msg( void )
 {
     APP_MsgTypeDef msgReceived = {0};
     APP_MsgTypeDef nextEvent = {0};
+    int8_t temp = 25;
 
     HAL_RTC_GetTime_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetDate_ExpectAnyArgsAndReturn( HAL_OK );
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+    Analogs_GetTemperature_IgnoreAndReturn( temp );
 
     nextEvent = Clock_Send_Display_Msg( &msgReceived );
 
@@ -666,22 +670,4 @@ void test__HAL_GPIO_EXTI_Rising_Callback( void )
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
 
     HAL_GPIO_EXTI_Rising_Callback( GPIO_PIN_5 );
-}
-
-/**
- * @brief   test Clock_Get_Temperature.
-*/
-void test__Clock_Get_Temperature( void )
-{
-    APP_MsgTypeDef msgReceived = {0};
-    APP_MsgTypeDef nextEvent = {0};
-    int8_t temp = 25;
-
-    Analogs_GetTemperature_IgnoreAndReturn( temp );
-    HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
-
-    nextEvent = Clock_Get_Temperature( &msgReceived );
-
-    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_TEMPERATURE );
-    TEST_ASSERT_EQUAL( temp, nextEvent.temperature );
 }
