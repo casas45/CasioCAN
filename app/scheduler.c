@@ -178,14 +178,17 @@ unsigned char AppSched_periodTask( AppSched_Scheduler *scheduler, unsigned char 
 
 void AppSched_startScheduler( AppSched_Scheduler *scheduler )
 {
+    (void) lastTick;
     unsigned long tickstart; 
     static unsigned long countTicks = 1;  //variable to count ticks
 
+    #ifndef UTEST
     uint16_t currentTick;
-    
+
     /*if a task is added it's mandatory add the error code */
     const App_ErrorsCode TasksError[ TASKS_N ] = 
-    { TASK_SERIAL_ERROR, TASK_CLOCK_ERROR, TASK_HEARTBEAT_ERROR, TASK_DISPLAY_ERROR, TASK_WWDG_ERROR };
+    { TASK_SERIAL_ERROR, TASK_CLOCK_ERROR, TASK_HEARTBEAT_ERROR, TASK_DISPLAY_ERROR, TASK_WWDG_ERROR, TASK_LCD_ERROR };
+    #endif
 
     for (unsigned char i = 0; i < scheduler->tasksCount; i++)   //cicle for init tasks
     {
@@ -210,15 +213,18 @@ void AppSched_startScheduler( AppSched_Scheduler *scheduler )
                 
                 if ( ( scheduler->taskPtr[i].elapsed >= ( scheduler->taskPtr[i].period ) ) && ( scheduler->taskPtr[i].runTask == TRUE ) )
                 {
-
+                    #ifndef UTEST
                     currentTick = __HAL_TIM_GetCounter( &TIM6_Handler );
 
                     assert_error( ( currentTick - lastTick[i] ) <= ( scheduler->taskPtr[i].period + ERROR_2MS ) , TasksError[i] );
+                    #endif
 
                     scheduler->taskPtr[i].taskFunc();
                     scheduler->taskPtr[i].elapsed = 0;          //reset elapsed time
 
+                    #ifndef UTEST
                     lastTick[ i ] = __HAL_TIM_GetCounter( &TIM6_Handler );
+                    #endif
                 } 
             }
              

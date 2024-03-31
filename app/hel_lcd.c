@@ -209,26 +209,48 @@ uint8_t HEL_LCD_SetCursor( LCD_HandleTypeDef *hlcd, uint8_t row, uint8_t col )
  * @param hlcd Pointer to the LCD handle structure.
  * @param state The desired backlight state: LCD_ON to turn on, LCD_OFF to turn off, LCD_TOGGLE to
  * toggle the state.
+ * 
+ * @return HAL_OK if the operation was successful, otherwise HAL_ERROR.
  */
-void HEL_LCD_Backlight( LCD_HandleTypeDef *hlcd, uint8_t state )
+uint8_t HEL_LCD_Backlight( LCD_HandleTypeDef *hlcd, uint8_t state )
 {
+    uint8_t retVal = HAL_ERROR;
+    static uint8_t current_state = LCD_ON;
+
     switch ( state )
     {
         case LCD_ON:
-            HAL_GPIO_WritePin( hlcd->BklPort, hlcd->BklPin, SET );
+
+            retVal = HAL_TIM_PWM_Start( hlcd->TimHandler, TIM_CHANNEL_1 );
+            current_state = LCD_ON;
+
             break;
 
         case LCD_OFF:
-            HAL_GPIO_WritePin( hlcd->BklPort, hlcd->BklPin, RESET );
+
+            retVal = HAL_TIM_PWM_Stop( hlcd->TimHandler, TIM_CHANNEL_1 );
+            current_state = LCD_OFF;
+
             break;
 
         case LCD_TOGGLE:
-            HAL_GPIO_TogglePin( hlcd->BklPort, hlcd->BklPin );
+
+            if ( current_state == LCD_ON )
+            {
+                retVal = HAL_TIM_PWM_Stop( hlcd->TimHandler, TIM_CHANNEL_1 );
+                current_state = LCD_OFF;
+            }else{
+                retVal = HAL_TIM_PWM_Start( hlcd->TimHandler, TIM_CHANNEL_1 );
+                current_state = LCD_ON;
+            }
+
             break;
 
         default:
             break;
     }
+
+    return retVal;
 }
 
 /**
@@ -253,6 +275,33 @@ uint8_t HEL_LCD_Contrast( LCD_HandleTypeDef *hlcd, uint8_t contrast )
 
         contrast_cmd |= CONTRAST_SET;           /*Add the command bits to set the contrast*/
         retValue = HEL_LCD_Command( hlcd, contrast_cmd );
+    }
+    
+    return retValue;
+}
+
+/**
+ * @brief   Control the intensity of the backlight.
+ * 
+ * The new pulse value is loaded into the Capture Compare Register 1, if the intensity level is out of
+ * range the function returns false.
+ * 
+ * @param hlcd Pointer to the LCD handle structure.
+ * @param intensity The intensity level to be set. Should be from 0 to 100.
+ * 
+ * @retval  The operation succes, return true if the intensity level is lower than 100, otherwise false.
+*/
+uint8_t HEL_LCD_Intensity( LCD_HandleTypeDef *hlcd, uint8_t intensity )
+{
+    uint8_t retValue = false;
+
+    if ( intensity <= MAX_INTENSITY )
+    {
+        retValue = true;
+
+        #ifndef UTEST
+        hlcd->TimHandler->Instance->CCR1 = intensity;
+        #endif
     }
     
     return retValue;

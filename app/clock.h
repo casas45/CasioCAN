@@ -6,12 +6,6 @@
 #ifndef CLOCK_H__
 #define CLOCK_H__
 
-#ifndef UTEST
-#define STATIC static       /*!< Macro to remove static keyword only for unit tests */
-#else
-#define STATIC
-#endif
-
 void Clock_InitTask( void );
 
 void Clock_PeriodicTask( void );

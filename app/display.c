@@ -5,6 +5,7 @@
 */
 #include "display.h"
 #include "bsp.h"
+#include "analogs.h"
 
 #define BCD_TO_BIN( x ) ( ( ( (x) >> 4u ) * 10u ) + ( (x) & 0x0Fu ) ) /*!< Macro to conver BCD data to an integer */
 
@@ -12,6 +13,9 @@
 #define GET_TENS( x ) ( ( (x) % 100u ) / 10u )              /*!< Operation to get the tens of x */
 #define GET_HUNDREDS(x) ( ( (x) % 1000u ) / 100u )          /*!< Operation to get the hundreds of x */
 #define GET_THOUSANDS(x) ( ( (x) % 10000u ) / 1000u )       /*!< Operation to get the thousands of x */
+
+#define TIM3_PRESCALER  6400u           /*!< TIM3 prescaler to get 100 Hz frequency */
+#define TIM3_PERIOD     100u            /*!< TIM3 period to get 100 Hz frequency */
 
 /**
  * @brief Queue to communicate clock and display tasks.
@@ -25,6 +29,9 @@ LCD_HandleTypeDef LCD_Handler;
 
 /** @brief SPI Handler */
 SPI_HandleTypeDef SPI_Handler;
+
+/** @brief TIM3 Handler */
+TIM_HandleTypeDef TIM3_Handler;
 
 STATIC APP_MsgTypeDef Display_Update( APP_MsgTypeDef *pDisplayMsg );
 
@@ -40,11 +47,15 @@ STATIC APP_MsgTypeDef Display_AlarmNoConfig( APP_MsgTypeDef *pDisplayMsg );
 
 STATIC APP_MsgTypeDef Display_ClearSecondLine( APP_MsgTypeDef *pDisplayMsg );
 
+STATIC APP_MsgTypeDef Display_Temperature( APP_MsgTypeDef *pDisplayMsg );
+
 STATIC void TimeString( char *string, uint8_t hours, uint8_t minutes, uint8_t seconds );
 
 STATIC void DateString( char *string, uint8_t month, uint8_t day, uint16_t year, uint8_t weekday );
 
 STATIC void AlarmString( char *string, unsigned char hours, unsigned char minutes );
+
+STATIC void TemperatureString( char *string, int8_t temperature );
 
 /**
  * @brief   Initialize all required to work with the LCD.
@@ -88,8 +99,26 @@ void Display_InitTask( void )
     SPI_Handler.Init.CRCCalculation     = SPI_CRCCALCULATION_DISABLED;
 
     Status = HAL_SPI_Init( &SPI_Handler );
-
     assert_error( Status == HAL_OK, SPI_RET_ERROR );
+
+
+    TIM_OC_InitTypeDef PWM_ch = {0};
+
+    TIM3_Handler.Instance         = TIM3;
+    TIM3_Handler.Init.Prescaler   = TIM3_PRESCALER;
+    TIM3_Handler.Init.Period      = TIM3_PERIOD;
+    TIM3_Handler.Init.CounterMode = TIM_COUNTERMODE_UP;
+
+    Status = HAL_TIM_PWM_Init( &TIM3_Handler );
+    assert_error( Status == HAL_OK, TIM_RET_ERROR );
+
+    PWM_ch.OCMode     = TIM_OCMODE_PWM1;
+    PWM_ch.OCPolarity = TIM_OCPOLARITY_HIGH;
+    PWM_ch.OCFastMode = TIM_OCFAST_DISABLE;
+    PWM_ch.Pulse      = TIM3_PERIOD;
+
+    Status = HAL_TIM_PWM_ConfigChannel( &TIM3_Handler, &PWM_ch, TIM_CHANNEL_1 );
+    assert_error( Status == HAL_OK, TIM_RET_ERROR );
 
     /*LCD Handler configuration*/
     LCD_Handler.spiHandler = &SPI_Handler;
@@ -106,10 +135,13 @@ void Display_InitTask( void )
     LCD_Handler.CsPort    = GPIOD;
     LCD_Handler.CsPin     = GPIO_PIN_3;
 
+    LCD_Handler.TimHandler = &TIM3_Handler;
+
     Status = HEL_LCD_Init( &LCD_Handler );
     assert_error( Status == HAL_OK, LCD_RET_ERROR );
 
-    HEL_LCD_Backlight( &LCD_Handler, LCD_ON );
+    Status = HEL_LCD_Backlight( &LCD_Handler, LCD_ON );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
 
 }
 
@@ -126,7 +158,8 @@ void Display_PeriodicTask( void )
         Display_ChangeBacklightState,
         Display_AlarmNoConfig,
         Display_AlarmValues,
-        Display_ClearSecondLine
+        Display_ClearSecondLine,
+        Display_Temperature
     };
 
     APP_MsgTypeDef readMsg = {0};
@@ -147,6 +180,46 @@ void Display_PeriodicTask( void )
 }
 
 /**
+ * @brief   Update the LCD's intensity and contrast values.
+ * 
+ * The aim of this function is to check if the intensity or contrast values have changed
+ * and update this these values on the LCD.
+*/
+void Display_LcdTask( void )
+{
+    static uint8_t current_contrast = 0u;
+    uint8_t new_contrast;
+
+    static uint8_t current_intensity = 0u;
+    uint8_t new_intensity;
+
+    new_contrast = Analogs_GetContrast( );
+
+    if ( new_contrast != current_contrast )
+    {
+        HAL_StatusTypeDef Status = HAL_ERROR;
+
+        current_contrast = new_contrast;
+
+        Status = HEL_LCD_Contrast( &LCD_Handler, new_contrast );
+        assert_error( Status == HAL_OK, LCD_RET_ERROR );
+    }
+
+    new_intensity = Analogs_GetIntensity( );
+
+    if ( new_intensity != current_intensity )
+    {
+        uint8_t Status_Intensity = false;
+
+        current_intensity = new_intensity;
+
+        Status_Intensity = HEL_LCD_Intensity( &LCD_Handler, new_intensity );
+        assert_error( Status_Intensity == true, LCD_RET_ERROR );
+    }
+    
+}
+
+/**
  * @brief   Sends the strings with the time and date.
  * 
  * This function updates the display getting the time and date information from the the read message
@@ -163,8 +236,7 @@ void Display_PeriodicTask( void )
 */
 STATIC APP_MsgTypeDef Display_Update ( APP_MsgTypeDef *pDisplayMsg )
 {
-    APP_MsgTypeDef nextEvent = {0};
-    nextEvent.msg = DISPLAY_MSG_NONE;
+    APP_MsgTypeDef nextEvent = { .msg = DISPLAY_MSG_NONE};
 
     HAL_StatusTypeDef Status = HAL_ERROR;
 
@@ -182,7 +254,7 @@ STATIC APP_MsgTypeDef Display_Update ( APP_MsgTypeDef *pDisplayMsg )
     Status = HEL_LCD_String( &LCD_Handler, lcd_row_0_date );
     assert_error( Status == HAL_OK, SPI_RET_ERROR );  
 
-    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 4u );
+    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 2u );
     assert_error( Status == HAL_OK, SPI_RET_ERROR );
 
     Status = HEL_LCD_String( &LCD_Handler, lcd_row_1_time );
@@ -260,9 +332,12 @@ STATIC APP_MsgTypeDef Display_ChangeBacklightState( APP_MsgTypeDef *pDisplayMsg 
 {
     (void) pDisplayMsg;
 
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
     APP_MsgTypeDef nextEvent = { .msg = DISPLAY_MSG_NONE };
 
-    HEL_LCD_Backlight( &LCD_Handler, pDisplayMsg->displayBkl );
+    Status = HEL_LCD_Backlight( &LCD_Handler, pDisplayMsg->displayBkl );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
 
     return nextEvent;
 }
@@ -343,6 +418,34 @@ STATIC APP_MsgTypeDef Display_ClearSecondLine( APP_MsgTypeDef *pDisplayMsg )
     assert_error( Status == HAL_OK, LCD_RET_ERROR );
 
     Status = HEL_LCD_String( &LCD_Handler, blankString );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    return nextEvent;
+}
+
+/**
+ * @brief   Display the temperature value.
+ * 
+ * Show the internal temperature on the second line, get from the internal sensor.
+ * 
+ * @param   pDisplayMsg Pointer to the display message read.
+ * 
+ * @return  The next display event.
+*/
+STATIC APP_MsgTypeDef Display_Temperature( APP_MsgTypeDef *pDisplayMsg )
+{
+    (void) pDisplayMsg;
+    
+    APP_MsgTypeDef nextEvent = {.msg = DISPLAY_MSG_NONE};
+    char TempString[5];
+    HAL_StatusTypeDef Status = HAL_ERROR;
+
+    TemperatureString( TempString, pDisplayMsg->temperature );
+
+    Status = HEL_LCD_SetCursor( &LCD_Handler, 1u, 11u );
+    assert_error( Status == HAL_OK, LCD_RET_ERROR );
+
+    Status = HEL_LCD_String( &LCD_Handler, TempString );
     assert_error( Status == HAL_OK, LCD_RET_ERROR );
 
     return nextEvent;
@@ -461,4 +564,43 @@ STATIC void AlarmString( char *string, unsigned char hours, unsigned char minute
     string[9]  = GET_TENS(minutes) + UPSET_ASCII_NUM;
     string[10]  = GET_UNITS(minutes) + UPSET_ASCII_NUM;
     string[11] = '\0';
+}
+
+/**
+ * @brief   Set the temperature value into a string with a specific format.
+ * 
+ * This function first evaluates if the temperature is negative to add the sign in the string and
+ * get the absolute value, if it's not negative but higher than 99 add the number 1 to the string,
+ * otherwise just add a blank space, finally get the tens and units to put into the array with the
+ * null character at the final.
+ * 
+ * @param   string  Pointer to the character array where the formatted temperature string will be stored.
+ * @param   temperature Temperature value.
+ * 
+ * @note The string must have sufficient space (at least 5 characters) to accommodate the 
+ * formatted temperature value.
+*/
+STATIC void TemperatureString( char *string, int8_t temperature )
+{
+    uint8_t temp = temperature;
+
+    if( temperature < 0 )
+    {
+        string[0] = '-';            /* add the sign */
+        temp = (~temperature) + 1;  /* take the absolute value */
+    }
+    else if ( temperature > 99 )
+    {
+        string[0] = '1';
+    }
+    else
+    {
+        string[0] = ' ';
+    }
+    
+    string[1] = GET_TENS( temp ) + UPSET_ASCII_NUM;
+    string[2] = GET_UNITS( temp ) + UPSET_ASCII_NUM;
+
+    string[3] = 'C';
+    string[4] = '\0';
 }

@@ -6,6 +6,7 @@
 #include "unity.h"
 #include "bsp.h"
 #include "clock.h"
+#include "stdint.h"
 
 #include "mock_queue.h"
 #include "mock_scheduler.h"
@@ -14,6 +15,7 @@
 #include "mock_stm32g0xx_hal_gpio.h"
 #include "mock_stm32g0xx_hal_cortex.h"
 #include "mock_hel_lcd.h"
+#include "mock_analogs.h"
 
 /**
  * @brief   reference to the Scheduler.
@@ -121,6 +123,12 @@ APP_MsgTypeDef Clock_ButtonReleased( APP_MsgTypeDef * );
 */
 APP_MsgTypeDef Clock_GetAlarm( APP_MsgTypeDef * );
 
+/** 
+ * @brief   Reference for the private function Clock_Get_Temperature. 
+ * @return  Message with the next event.
+*/
+APP_MsgTypeDef Clock_Get_Temperature( APP_MsgTypeDef * );
+
 /**
  * @brief   Function to test the Clock_InitTask function.
  * 
@@ -163,7 +171,6 @@ void test__ClockUpdate_Callback( void )
 void test__TimerAlarmOneSecond_Callback__buzzer_flg_FALSE( void )
 {
     HAL_TIM_PWM_Start_ExpectAnyArgsAndReturn( HAL_OK );
-    HEL_LCD_Backlight_Ignore( );
     HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
     AppSched_startTimer_ExpectAnyArgsAndReturn( TRUE );
 
@@ -280,6 +287,7 @@ void test__Clock_PeriodicTask__display_msg_case_DISPLAY( void )
 {
     APP_MsgTypeDef receivedMSG = {0};
     receivedMSG.msg = CLOCK_MSG_DISPLAY;
+    int8_t temp = 25;
 
     HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( FALSE );
     HIL_QUEUE_readDataISR_ExpectAnyArgsAndReturn( TRUE );
@@ -287,7 +295,8 @@ void test__Clock_PeriodicTask__display_msg_case_DISPLAY( void )
     HIL_QUEUE_isQueueEmptyISR_IgnoreAndReturn( TRUE );
     HAL_RTC_GetTime_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetDate_ExpectAnyArgsAndReturn( HAL_OK );
-    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
+    HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+    Analogs_GetTemperature_IgnoreAndReturn( temp );
 
     Clock_PeriodicTask( );
 }
@@ -431,10 +440,12 @@ void test__Clock_Send_Display_Msg( void )
 {
     APP_MsgTypeDef msgReceived = {0};
     APP_MsgTypeDef nextEvent = {0};
+    int8_t temp = 25;
 
     HAL_RTC_GetTime_ExpectAnyArgsAndReturn( HAL_OK );
     HAL_RTC_GetDate_ExpectAnyArgsAndReturn( HAL_OK );
-    HIL_QUEUE_writeDataISR_ExpectAnyArgsAndReturn( TRUE );
+    HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+    Analogs_GetTemperature_IgnoreAndReturn( temp );
 
     nextEvent = Clock_Send_Display_Msg( &msgReceived );
 
@@ -492,6 +503,7 @@ void test__Clock_ButtonPressed__AlarmActivated_flg_TRUE_return_msg_CLOCK_MSG_DEA
     
     AppSched_stopTimer_IgnoreAndReturn( TRUE );
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+    HIL_QUEUE_flushQueueISR_Ignore( ); 
 
     nextEvent = Clock_ButtonPressed( &msgReceived );
 
@@ -515,6 +527,7 @@ void test__Clock_ButtonPressed__AlarmSet_flg_TRUE_return_msg_CLOCK_MSG_GET_ALARM
     
     AppSched_stopTimer_IgnoreAndReturn( TRUE );
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+    HIL_QUEUE_flushQueueISR_Ignore( ); 
 
     nextEvent = Clock_ButtonPressed( &msgReceived );
 
@@ -538,6 +551,7 @@ void test__Clock_ButtonPressed__AlarmSet_flg_FALSE_and_AlarmActivated_flg_FALSE_
     
     AppSched_stopTimer_IgnoreAndReturn( TRUE );
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
+    HIL_QUEUE_flushQueueISR_Ignore( ); 
 
     nextEvent = Clock_ButtonPressed( &msgReceived );
 
@@ -545,36 +559,16 @@ void test__Clock_ButtonPressed__AlarmSet_flg_FALSE_and_AlarmActivated_flg_FALSE_
 }
 
 /**
- * @brief   test Clock_ButtonReleased event, case when the button is still pressed.
- * 
- * In this event was added if sentence to evaluate whether the button was actually released or not,
- * the aim of this test is to check if the correct message is returned mocking the HAL_GPIO_ReadPin
- * function to get a GPIO_PIN_RESET state, the expected result is a DISPLAY_MSG_NONE message.
-*/
-void test__Clock_ButtonReleased__button_still_pressed_return_DISPLAY_MSG_NONE_message( void )
-{
-    APP_MsgTypeDef msgReceived = {0};
-    APP_MsgTypeDef nextEvent = {0};
-
-    HAL_GPIO_ReadPin_ExpectAnyArgsAndReturn( GPIO_PIN_RESET );
-
-    nextEvent = Clock_ButtonReleased( &msgReceived );
-
-    TEST_ASSERT_EQUAL( nextEvent.msg, DISPLAY_MSG_NONE );
-}
-
-/**
  * @brief   test Clock_ButtonReleased event, button is not pressed and the AlarmSet_flg is FALSE.
  * 
- * When the button a valid button released event has been added (the button is not pressed) and the
+ * When the button released event has been added and the
  * AlarmSet_flg is set to FALSE, the next display event shall be DISPLAY_MSG_CLEAR_SECOND_LINE.
 */
-void test__Clock_ButtonReleased__correct_release_AlarmSet_flg_FALSE_return_DISPLAY_MSG_CLEAR_SECOND_LINE_message(void)
+void test__Clock_ButtonReleased__AlarmSet_flg_FALSE_return_DISPLAY_MSG_CLEAR_SECOND_LINE_message(void)
 {
     APP_MsgTypeDef msgReceived = {0};
     APP_MsgTypeDef nextEvent = {0};
 
-    HAL_GPIO_ReadPin_ExpectAnyArgsAndReturn( GPIO_PIN_SET );
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
     AppSched_startTimer_IgnoreAndReturn( TRUE );
 
@@ -586,17 +580,16 @@ void test__Clock_ButtonReleased__correct_release_AlarmSet_flg_FALSE_return_DISPL
 /**
  * @brief   test Clock_ButtonReleased event, button is not pressed and the AlarmSet_flg is TRUE.
  * 
- * When the button a valid button released event has been added (the button is not pressed) and the
+ * When the button released event has been added and the
  * AlarmSet_flg is set to TRUE, the next display event shall be DISPLAY_MSG_ALARM_SET.
 */
-void test__Clock_ButtonReleased__correct_release_AlarmSet_flg_TRUE_return_DISPLAY_MSG_ALARM_SET_message(void)
+void test__Clock_ButtonReleased__AlarmSet_flg_TRUE_return_DISPLAY_MSG_ALARM_SET_message(void)
 {
     APP_MsgTypeDef msgReceived = {0};
     APP_MsgTypeDef nextEvent = {0};
 
     AlarmSet_flg = TRUE;
 
-    HAL_GPIO_ReadPin_ExpectAnyArgsAndReturn( GPIO_PIN_SET );
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
     AppSched_startTimer_IgnoreAndReturn( TRUE );
 
@@ -656,7 +649,7 @@ void test__HAL_RTC_AlarmAEventCallback( void )
     HIL_QUEUE_writeDataISR_IgnoreAndReturn( TRUE );
     HAL_RTC_DeactivateAlarm_IgnoreAndReturn( HAL_OK );
 
-    HAL_RTC_AlarmAEventCallback( &hrtc );
+    HAL_RTC_AlarmAEventCallback( &h_rtc );
 }
 
 /**

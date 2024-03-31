@@ -5,6 +5,7 @@
  */
 #include "clock.h"
 #include "bsp.h"
+#include "analogs.h"
 
 #define N_MESSAGES_CLKQUEUE 20u     /*!< Number of messages in ClkQueue (20)*/
 #define CENTENARY           100u    /*!< Value of a centenary */
@@ -419,7 +420,6 @@ STATIC APP_MsgTypeDef Clock_Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
     RTC_DateTypeDef sDate = { 0 };
 
     APP_MsgTypeDef updateMsg = {0};
-    updateMsg.msg = DISPLAY_MSG_UPDATE;
 
     Status = HAL_RTC_GetTime( &h_rtc, &sTime, RTC_FORMAT_BIN );
     assert_error( Status == HAL_OK, RTC_RET_ERROR );
@@ -436,7 +436,14 @@ STATIC APP_MsgTypeDef Clock_Send_Display_Msg( APP_MsgTypeDef *PtrMsgClk )
     updateMsg.tm.tm_year = sDate.Year;
     updateMsg.tm.tm_wday = sDate.WeekDay;
 
-    /*Write to the display queue*/
+    /*Write to the display queue to show temp */
+    updateMsg.temperature = Analogs_GetTemperature( );
+    updateMsg.msg = DISPLAY_MSG_TEMPERATURE;
+    Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &updateMsg );
+    assert_error( Status == TRUE, QUEUE_RET_ERROR );
+
+    /*Write to the display queue to show time and date */
+    updateMsg.msg = DISPLAY_MSG_UPDATE;
     Status = HIL_QUEUE_writeDataISR( &DisplayQueue, &updateMsg );
     assert_error( Status == TRUE, QUEUE_RET_ERROR );
 

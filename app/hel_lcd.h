@@ -9,6 +9,9 @@
 #include "stm32g0xx.h"
 #include <string.h>
 #include <stdint.h>
+#include <stdbool.h>
+
+#define MAX_INTENSITY       100u    /*!< Maximum intensity value */
 
 #define MAX_COL   15u     /*!< Maximum column number */
 #define ROW_0     0u      /*!< Row 0 value */
@@ -137,6 +140,7 @@ typedef struct
     uint32_t                CsPin;          /*!< GPIO pin for the Chip Select (CS) pin */
     GPIO_TypeDef            *BklPort;       /*!< GPIO port for the Backlight pin */
     uint32_t                BklPin;         /*!< GPIO pin for the Backlight pin */
+    TIM_HandleTypeDef       *TimHandler;     /*!< Pointer to the TIM Handler to control the intensity */
 
 } LCD_HandleTypeDef;
 
@@ -152,8 +156,10 @@ uint8_t HEL_LCD_String( LCD_HandleTypeDef *hlcd, const char *str );
 
 uint8_t HEL_LCD_SetCursor( LCD_HandleTypeDef *hlcd, uint8_t row, uint8_t col );
 
-void HEL_LCD_Backlight( LCD_HandleTypeDef *hlcd, uint8_t state );
+uint8_t HEL_LCD_Backlight( LCD_HandleTypeDef *hlcd, uint8_t state );
 
 uint8_t HEL_LCD_Contrast( LCD_HandleTypeDef *hlcd, uint8_t contrast );
+
+uint8_t HEL_LCD_Intensity( LCD_HandleTypeDef *hlcd, uint8_t intensity );
 
 #endif
