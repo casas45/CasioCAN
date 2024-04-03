@@ -23,6 +23,8 @@ Also, some Functional Safety requirements were added to the project, including c
 
 The entire project was versioned using git, and each feature was developed in a separate branch, documented using Doxygen, and compliance with MISRA standards was ensured using cppcheck.
 
+The unit testing applied to each function was done using ceedling.
+
 
 > The project is implemented in the STM32-G0B1RE Nucleo board.
 
