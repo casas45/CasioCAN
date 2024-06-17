@@ -188,6 +188,8 @@ static void Watchdog_PeriodicTask( void )
 */
 void safe_state( const char *file, uint32_t line, uint8_t error )
 {
+    ShutdownOS();
+    
     __disable_irq();        /* Disable interrupts */
 
     (void) file;
@@ -220,7 +222,7 @@ void safe_state( const char *file, uint32_t line, uint8_t error )
     { 
         HAL_WWDG_Refresh( &h_watchdog );
     }
-    
+
 }
 
 
